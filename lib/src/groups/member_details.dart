@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'chat_screen.dart';
 
 class MemberDetailsScreen extends StatefulWidget {
@@ -21,6 +21,17 @@ class MemberDetailsScreen extends StatefulWidget {
 }
 
 class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
+  String _selectedStatus = 'Collected';
+  final TextEditingController _amountController = TextEditingController(text: '08.000');
+  final TextEditingController _dueController = TextEditingController(text: '02.000');
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _dueController.dispose();
+    super.dispose();
+  }
+
   // Sample transaction data
   final List<Map<String, dynamic>> _transactions = [
     {
@@ -46,7 +57,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: const Color(0xFF171717),
       body: SafeArea(
         child: Column(
           children: [
@@ -54,22 +65,29 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
             Container(
               width: double.infinity,
               decoration: const BoxDecoration(
-                color: Color(0xFFF6F6F6),
+                color: Color(0xFF141414),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                padding: const EdgeInsets.fromLTRB(0, 16, 20, 20),
                 child: Row(
                   children: [
-                    // Back button
                     IconButton(
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: AppColors.textPrimary,
-                        size: 24,
+                      padding: EdgeInsets.zero,
+                      icon: SvgPicture.asset(
+                        'assets/svg/back.svg',
+                        width: 32,
+                        height: 32,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const SizedBox(width: 12),
                     // Avatar
                     Container(
                       width: 48,
@@ -91,7 +109,6 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Name and role
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,9 +116,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           Text(
                             widget.memberName,
                             style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFEFEEEC),
                               fontFamily: 'DM Sans',
                             ),
                           ),
@@ -111,7 +128,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.textSecondary,
+                              color: Color(0xFFA5A5A5),
                               fontFamily: 'DM Sans',
                             ),
                           ),
@@ -120,10 +137,15 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                     ),
                     // Edit icon
                     IconButton(
-                      icon: const Icon(
-                        Icons.edit,
-                        color: AppColors.textPrimary,
-                        size: 24,
+                      padding: EdgeInsets.zero,
+                      icon: SvgPicture.asset(
+                        'assets/svg/add.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
                       ),
                       onPressed: () {
                         Navigator.of(context).push(
@@ -158,47 +180,54 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
             // Collect New Button
             Container(
               padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Handle collect new action
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: Center(
+                child: IntrinsicWidth(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _showCollectNewModal(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2D7A4F),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 20,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.add,
-                          color: AppColors.primary,
-                          size: 20,
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Collect New',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'DM Sans',
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Collect New',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'DM Sans',
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -219,29 +248,22 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF232220),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         children: [
           // Status icon
           Container(
-            width: 40,
-            height: 40,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFA8E6CF), // Light green
+              color: const Color(0xFF181818),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.check,
-              color: Colors.white,
+              color: Color(0xFF2D7A4F),
               size: 24,
             ),
           ),
@@ -252,11 +274,11 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  amount.toString(),
+                  value,
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                     fontFamily: 'DM Sans',
                   ),
                 ),
@@ -266,24 +288,264 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.textSecondary,
+                    color: Color(0xFFA5A5A5),
                     fontFamily: 'DM Sans',
                   ),
                 ),
               ],
             ),
           ),
-          // Value
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              fontFamily: 'DM Sans',
+        ],
+      ),
+    );
+  }
+
+  void _showCollectNewModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF171717),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA5A5A5),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Dropdown field
+                  GestureDetector(
+                    onTap: () {
+                      _showDropdownOptions(context, setModalState);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF232220),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _selectedStatus,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Conditionally show Amount and Due fields for Partially Collected
+                  if (_selectedStatus == 'Partially Collected') ...[
+                    const SizedBox(height: 20),
+                    // Amount field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Amount',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF232220),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TextField(
+                            controller: _amountController,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2D7A4F),
+                              fontFamily: 'DM Sans',
+                            ),
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              filled: true,
+                              fillColor: Color(0xFF232220),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Due field
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Due',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF232220),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: TextField(
+                            controller: _dueController,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFEF4444),
+                              fontFamily: 'DM Sans',
+                            ),
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                              filled: true,
+                              fillColor: Color(0xFF232220),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 30),
+                  // Save button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(bottomSheetContext);
+                        // Handle save action
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D7A4F),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDropdownOptions(BuildContext context, StateSetter setModalState) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF171717),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
             ),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFA5A5A5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              _buildDropdownOption('Collected', setModalState, context),
+              _buildDropdownOption('Partially Collected', setModalState, context),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDropdownOption(
+    String option,
+    StateSetter setModalState,
+    BuildContext context,
+  ) {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedStatus = option;
+        });
+        setModalState(() {});
+        Navigator.pop(context);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Text(
+          option,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: _selectedStatus == option ? Colors.white : const Color(0xFFA5A5A5),
+            fontFamily: 'DM Sans',
+          ),
+        ),
       ),
     );
   }

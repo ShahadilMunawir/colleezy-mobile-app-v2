@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../groups/create_group.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -36,10 +37,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE8F5E3),
-      body: Stack(
-        children: [
-          SafeArea(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF7FDE68),
+              Color(0xFF1B1F1A),
+            ],
+            stops: [0.0, 0.5],
+          ),
+        ),
+        child: Stack(
+          children: [
+            SafeArea(
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
@@ -76,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   'Hello,',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    color: Color(0xFF6B7280),
+                                    color: Color(0xFFF2F2F2),
                                     fontWeight: FontWeight.w400,
                                   ),
                                 ),
@@ -84,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   'Ms.Joan',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: Color(0xFF1F2937),
+                                    color: Color(0xFFF2F2F2),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -92,16 +104,13 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2D7A4F),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.notifications,
-                            color: Colors.white,
-                            size: 22,
+                        SvgPicture.asset(
+                          'assets/svg/bell.svg',
+                          width: 22,
+                          height: 22,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
                           ),
                         ),
                       ],
@@ -178,7 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFE0DED9),
+                      color: Color(0xFF2A2A2A),
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(30),
                         topRight: Radius.circular(30),
@@ -199,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _buildActionButton(
-                                  icon: Icons.add,
+                                  svgPath: 'assets/svg/create.svg',
                                   label: 'Create',
                                   color: const Color(0xFF2D7A4F),
                                   onTap: () {
@@ -212,17 +221,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                 ),
                                 _buildActionButton(
-                                  icon: Icons.group_add,
+                                  svgPath: 'assets/svg/invite.svg',
                                   label: 'Invite',
                                   color: const Color(0xFF2D7A4F),
                                 ),
                                 _buildActionButton(
-                                  icon: Icons.emoji_events,
+                                  svgPath: 'assets/svg/winnder.svg',
                                   label: 'Winner',
                                   color: const Color(0xFF2D7A4F),
                                 ),
                                 _buildActionButton(
-                                  icon: Icons.support_agent,
+                                  svgPath: 'assets/svg/support.svg',
                                   label: 'Support',
                                   color: const Color(0xFF2D7A4F),
                                 ),
@@ -238,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             horizontal: 40,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Color(0xFF141414),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Column(
@@ -249,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1F2937),
+                                  color: Color(0xFFF2F2F2),
                                   height: 1.4,
                                 ),
                               ),
@@ -259,14 +268,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFF6B7280),
+                                  color: Color(0xFF136232),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        // Next Payment section
+                        // const SizedBox(height: 24),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -277,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1F2937),
+                                  color: Color(0xFFD2D2D2),
                                 ),
                               ),
                             ),
@@ -338,6 +346,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -354,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildActionButton({
-    required IconData icon,
+    required String svgPath,
     required String label,
     required Color color,
     VoidCallback? onTap,
@@ -366,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Color(0xFF141414),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -376,7 +385,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: SvgPicture.asset(
+              svgPath,
+              width: 24,
+              height: 24,
+              colorFilter: ColorFilter.mode(
+                color,
+                BlendMode.srcIn,
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -384,7 +401,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF4B5563),
+              color: Color(0xFFD0CDC6),
             ),
           ),
         ],
@@ -398,11 +415,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required String members,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(16),
-      ),
+      padding: const EdgeInsets.all(4),
+      
       child: Row(
         children: [
           Container(
@@ -429,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937),
+                    color: Color(0xFFD2D2D2),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -438,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFF6B7280),
+                    color: Color(0xFFA5A5A5),
                   ),
                 ),
               ],
@@ -449,7 +463,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF6B7280),
+              color: Color(0xFFD2D2D2),
             ),
           ),
         ],
@@ -487,123 +501,134 @@ class GroupCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF5FCC7A), Color(0xFF4CAF50)],
+          colors: [Color(0xFF5BBF7E), Color(0xFF3DA861)],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4CAF50).withOpacity(0.3),
+            color: const Color(0xFF3DA861).withOpacity(0.3),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Background decorative circle
-          Positioned(
-            right: -40,
-            top: -40,
-            child: Container(
-              width: 160,
-              height: 160,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -30,
-            bottom: -50,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.08),
-              ),
-            ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
-                    letterSpacing: -0.5,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            // Large decorative curved shape
+            Positioned(
+              right: -100,
+              top: -50,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.15),
+                      Colors.white.withOpacity(0.05),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
                 ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Total Amount
-                    Expanded(
-                      child: Column(
+              ),
+            ),
+            // Additional subtle circles for depth
+            Positioned(
+              left: -60,
+              bottom: -80,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+            ),
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Total Amount
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '\$ $amount',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black87,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'TOTAL AMOUNT',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      // Total Members
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            amount,
+                            totalMembers,
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1F2937),
+                              color: Colors.black87,
                               letterSpacing: -0.3,
                             ),
                           ),
                           const SizedBox(height: 4),
                           const Text(
-                            'TOTAL AMOUNT',
+                            'TOTAL MEMBER',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF374151),
+                              color: Colors.black87,
                               letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    // Total Members
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          totalMembers,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1F2937),
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'TOTAL MEMBER',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF374151),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

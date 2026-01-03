@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int selectedIndex;
@@ -15,7 +16,7 @@ class CustomBottomNavBar extends StatelessWidget {
     return Container(
       height: 70,
       decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
+        color: const Color(0xFF333231),
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
@@ -29,21 +30,22 @@ class CustomBottomNavBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(
-            icon: Icons.home,
+            svgPath: 'assets/svg/home.svg',
             index: 0,
             isSelected: selectedIndex == 0,
           ),
           _buildNavItem(
-            icon: Icons.groups_outlined,
+            svgPath: 'assets/svg/groups.svg',
             index: 1,
             isSelected: selectedIndex == 1,
           ),
-          _buildCustomNavItem(
+          _buildNavItem(
+            svgPath: 'assets/svg/lottery.svg',
             index: 2,
             isSelected: selectedIndex == 2,
           ),
           _buildNavItem(
-            icon: Icons.access_time,
+            svgPath: 'assets/svg/history.svg',
             index: 3,
             isSelected: selectedIndex == 3,
           ),
@@ -53,7 +55,7 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem({
-    required IconData icon,
+    required String svgPath,
     required int index,
     required bool isSelected,
   }) {
@@ -66,10 +68,14 @@ class CustomBottomNavBar extends StatelessWidget {
           color: isSelected ? const Color(0xFF2D7A4F) : Colors.transparent,
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          icon,
-          color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
-          size: 28,
+        child: SvgPicture.asset(
+          svgPath,
+          width: 28,
+          height: 28,
+          colorFilter: ColorFilter.mode(
+            isSelected ? Colors.white : const Color(0xFF9E9E9E),
+            BlendMode.srcIn,
+          ),
         ),
       ),
     );

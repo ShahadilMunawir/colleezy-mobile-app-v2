@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'create_group.dart';
 import 'group_details.dart';
 
@@ -14,7 +15,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: const Color(0xFF171717),
       body: Stack(
         children: [
           SafeArea(
@@ -24,7 +25,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 Container(
                   width: double.infinity,
                   decoration: const BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFF141414),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(24),
                       bottomRight: Radius.circular(24),
@@ -40,32 +41,28 @@ class _GroupsScreenState extends State<GroupsScreen> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF232220),
+                            color: Color(0xFFEFEEEC),
                           ),
                         ),
-                        Container(
-                          width: 31,
-                          height: 31,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF187A3F),
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 18,
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: SvgPicture.asset(
+                            'assets/svg/add.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
                             ),
-                            onPressed: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => const CreateGroupScreen(),
-                              );
-                            },
                           ),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const CreateGroupScreen(),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -76,11 +73,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   child: ListView(
                     padding: const EdgeInsets.all(20),
                     children: [
-                      _buildGroupCard(title: 'Hilite Kuri'),
+                      _buildGroupCard(title: 'Hilite Kuri', memberCount: 12),
                       const SizedBox(height: 16),
-                      _buildGroupCard(title: 'Test'),
+                      _buildGroupCard(title: 'Test', memberCount: 8),
                       const SizedBox(height: 16),
-                      _buildGroupCard(title: 'Test'),
+                      _buildGroupCard(title: 'Test', memberCount: 15),
                     ],
                   ),
                 ),
@@ -94,6 +91,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   Widget _buildGroupCard({
     required String title,
+    required int memberCount,
   }) {
     return InkWell(
       onTap: () {
@@ -111,40 +109,37 @@ class _GroupsScreenState extends State<GroupsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFF232220),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF232220),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFFF2F2F2),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$memberCount members',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFC1BDB3),
+                    ),
+                  ),
+                ],
               ),
             ),
-            GestureDetector(
-              onTap: () {
-                // Handle three-dot menu action
-                // This prevents the parent InkWell from being triggered
-              },
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0DED9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.more_vert,
-                  color: Color(0xFF474540),
-                  size: 18,
-                ),
-              ),
-            ),
+           
           ],
         ),
       ),

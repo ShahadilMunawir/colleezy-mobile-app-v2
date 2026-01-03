@@ -19,7 +19,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _durationController = TextEditingController();
   final _amountPerPeriodController = TextEditingController(text: '0.00');
   final _durationPeriodController = TextEditingController(text: '0.00');
+  final _percentageController = TextEditingController();
   String _collectPeriod = 'Monthly';
+  bool _commissionYes = false;
 
   @override
   void dispose() {
@@ -31,15 +33,16 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     _durationController.dispose();
     _amountPerPeriodController.dispose();
     _durationPeriodController.dispose();
+    _percentageController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
+      height: MediaQuery.of(context).size.height * 0.95,
       decoration: const BoxDecoration(
-        color: AppColors.background,
+        color: Color(0xFF2A2A2A),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
@@ -68,7 +71,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: Color(0xFFE0DED9),
                     fontFamily: 'DM Sans',
                   ),
                 ),
@@ -174,9 +177,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   ],
                 ),
                     const SizedBox(height: 32),
-                    // Add People Button
-                    _buildAddPeopleButton(),
-                    const SizedBox(height: 24),
+                    // Lottery Rules Section
+                    _buildLotteryRulesSection(),
+                    if (_commissionYes) ...[
+                      const SizedBox(height: 16),
+                      // Percentage Section
+                      _buildPercentageField(),
+                    ],
+                    const SizedBox(height: 32),
                     // Save Button
                     _buildSaveButton(),
                     const SizedBox(height: 20),
@@ -196,7 +204,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       style: const TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
+        color: Color(0xFFE0DED9),
         fontFamily: 'DM Sans',
       ),
     );
@@ -208,7 +216,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF2A2A2A),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TextFormField(
@@ -216,7 +224,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         style: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
+          color: Color(0xFF141414),
           fontFamily: 'DM Sans',
         ),
         decoration: InputDecoration(
@@ -232,7 +240,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Color(0xFF141414),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -270,7 +278,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Color(0xFF141414),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -313,7 +321,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: Color(0xFF141414),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -347,43 +355,136 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     );
   }
 
-  Widget _buildAddPeopleButton() {
-    return InkWell(
-      onTap: () {
-        // Handle add people action
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: DottedBorder(
-        color: AppColors.textTertiary,
-        strokeWidth: 1.5,
-        borderType: BorderType.RRect,
-        radius: const Radius.circular(12),
-        dashPattern: const [5, 3],
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.person_add,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Add People',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                  fontFamily: 'DM Sans',
-                ),
-              ),
-            ],
+  Widget _buildLotteryRulesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Lottery Rules',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFE0DED9),
+            fontFamily: 'DM Sans',
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+        const Text(
+          'Commission',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFE0DED9),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildToggleSwitch(
+                label: 'Yes',
+                value: _commissionYes,
+                onChanged: (value) {
+                  setState(() {
+                    _commissionYes = value;
+                  });
+                },
+              ),
+            ),            
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToggleSwitch({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Color(0xFFE0DED9),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: const Color(0xFF2D7A4F),
+          inactiveThumbColor: Colors.white,
+          inactiveTrackColor: const Color(0xFF2A2A2A),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPercentageField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Percentage',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFE0DED9),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF141414),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextFormField(
+            controller: _percentageController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFFE0DED9),
+              fontFamily: 'DM Sans',
+            ),
+            decoration: InputDecoration(
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 16, right: 8),
+                child: Text(
+                  '%',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFFE0DED9),
+                    fontFamily: 'DM Sans',
+                  ),
+                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: const Color(0xFF141414),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
