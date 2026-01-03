@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SpinWheelScreen extends StatefulWidget {
   const SpinWheelScreen({super.key});
@@ -228,61 +229,65 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F6F6),
+      backgroundColor: const Color(0xFF171717),
       body: Stack(
         children: [
           SafeArea(
             child: Column(
               children: [
-                // Header with Groups and Plus button
+                // Header
                 Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF141414),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Groups',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF2D7A4F),
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 16, 20, 20),
+                    child: Row(
+                      children: [
+                        IconButton(
                           padding: EdgeInsets.zero,
-                          icon: const Icon(
-                            Icons.add,
-                            color: Colors.white,
-                            size: 20,
+                          icon: SvgPicture.asset(
+                            'assets/svg/back.svg',
+                            width: 32,
+                            height: 32,
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
+                            ),
                           ),
-                          onPressed: () {
-                            // Handle add group
-                          },
+                          onPressed: () => Navigator.of(context).pop(),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Spin the Wheel',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFEFEEEC),
+                                  fontFamily: 'DM Sans',
+                                ),
+                              ),
+                              
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 // Select Group Dropdown
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Color(0xFF141414),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: DropdownButtonHideUnderline(
@@ -298,7 +303,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w400,
-                          color: Color(0xFF6B7280),
+                          color: Color(0xFFD0CDC6)
                         ),
                       ),
                       icon: const Icon(
@@ -309,7 +314,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w400,
-                        color: Color(0xFF1F2937),
+                        color: Color(0xFFD0CDC6),
                       ),
                       items: _dummyGroups.map((String group) {
                         return DropdownMenuItem<String>(
@@ -332,7 +337,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF374151),
+                    color: Color(0xFFD0CDC6),
                   ),
                 ),
                 const SizedBox(height: 40),

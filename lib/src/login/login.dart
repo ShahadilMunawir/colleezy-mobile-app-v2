@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import 'otp_verification_screen.dart';
+import '../profile/profile_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -109,7 +110,12 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCredential =
           await _authService.verifyOTP(_verificationId!, smsCode);
       if (userCredential.user != null && mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileScreen(),
+          ),
+        );
       }
     } catch (e) {
       rethrow;

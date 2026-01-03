@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../home/home.dart';
 import '../groups/groups.dart';
-import '../spin_wheel/spin_wheel.dart';
+import '../draw_selection/draw_selection_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'history_screen.dart';
 
@@ -18,7 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _pages = [
     const HomeScreen(),
     const GroupsScreen(),
-    const SpinWheelScreen(),
+    const DrawSelectionScreen(),
     const HistoryScreen(),
   ];
 
