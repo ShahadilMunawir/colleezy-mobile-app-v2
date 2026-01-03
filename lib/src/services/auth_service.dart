@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'api_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final ApiService _apiService = ApiService();
 
   // Get current user
   User? get currentUser => _auth.currentUser;
@@ -33,7 +35,14 @@ class AuthService {
       );
 
       // Once signed in, return the UserCredential
-      return await _auth.signInWithCredential(credential);
+      final userCredential = await _auth.signInWithCredential(credential);
+      
+      // Create user in backend after successful Firebase authentication
+      if (userCredential.user != null) {
+        await _apiService.createUserFromFirebase(userCredential.user!);
+      }
+      
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       print('Firebase Auth Error: ${e.code} - ${e.message}');
       rethrow;
@@ -89,7 +98,14 @@ class AuthService {
   // Sign in with phone credential
   Future<UserCredential> signInWithPhoneCredential(
       PhoneAuthCredential credential) async {
-    return await _auth.signInWithCredential(credential);
+    final userCredential = await _auth.signInWithCredential(credential);
+    
+    // Create user in backend after successful Firebase authentication
+    if (userCredential.user != null) {
+      await _apiService.createUserFromFirebase(userCredential.user!);
+    }
+    
+    return userCredential;
   }
 
   // Sign out
