@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "839736537820",
+    "project_id": "colleezy-f1638",
+    "storage_bucket": "colleezy-f1638.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839736537820:android:8d6b56f2abfaeaf6b9ba19",
+        "android_client_info": {
+          "package_name": "com.example.colleezy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "839736537820-9d1qe2ffe8lvqc4fvha4gmf6ejpu03p8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbnLeQ1kX63IW9fSqOKRv0DiMlluhJ_40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "839736537820-9d1qe2ffe8lvqc4fvha4gmf6ejpu03p8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
