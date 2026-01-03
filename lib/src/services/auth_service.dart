@@ -4,7 +4,11 @@ import 'api_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    // Use web client ID from google-services.json as workaround
+    // Proper fix: Add SHA-1 fingerprint to Firebase Console
+    serverClientId: '839736537820-9d1qe2ffe8lvqc4fvha4gmf6ejpu03p8.apps.googleusercontent.com',
+  );
   final ApiService _apiService = ApiService();
 
   // Get current user
