@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class LotteryScreen extends StatefulWidget {
   const LotteryScreen({super.key});
@@ -8,13 +9,10 @@ class LotteryScreen extends StatefulWidget {
 }
 
 class _LotteryScreenState extends State<LotteryScreen> {
-  // Sample participant data
-  final List<Map<String, dynamic>> _participants = [
-    {'name': 'Dennis Callis', 'initial': 'D'},
-    {'name': 'Jerry Helfer', 'initial': 'J'},
-    {'name': 'Daniel Hamilton', 'initial': 'D'},
-    {'name': 'Autumn Phillips', 'initial': 'A'},
-  ];
+  final ApiService _apiService = ApiService();
+  List<Map<String, dynamic>> _groups = [];
+  Map<int, int> _groupMemberCounts = {}; // groupId -> memberCount
+  bool _isLoading = true;
 
   // Color palette for avatars
   final List<Color> _avatarColors = [
@@ -26,6 +24,49 @@ class _LotteryScreenState extends State<LotteryScreen> {
 
   Color _getAvatarColor(int index) {
     return _avatarColors[index % _avatarColors.length];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final groups = await _apiService.getGroups();
+      final Map<int, int> memberCounts = {};
+
+      for (var group in groups) {
+        final groupId = group['id'] as int;
+        try {
+          final members = await _apiService.getGroupMembers(groupId);
+          memberCounts[groupId] = members.length;
+        } catch (e) {
+          print('Error loading members for group $groupId: $e');
+          memberCounts[groupId] = 0;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _groups = groups;
+          _groupMemberCounts = memberCounts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading groups: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -61,16 +102,42 @@ class _LotteryScreenState extends State<LotteryScreen> {
                 ),
                 // Groups List
                 Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      _buildGroupCard(title: 'Hilite Kuri', memberCount: 12),
-                      const SizedBox(height: 16),
-                      _buildGroupCard(title: 'Test', memberCount: 8),
-                      const SizedBox(height: 16),
-                      _buildGroupCard(title: 'Test', memberCount: 15),
-                    ],
-                  ),
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                          ),
+                        )
+                      : _groups.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'No groups yet. Create one!',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFFA5A5A5),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(20),
+                              itemCount: _groups.length,
+                              itemBuilder: (context, index) {
+                                final group = _groups[index];
+                                final groupId = group['id'] as int;
+                                final groupName = group['name'] as String? ?? 'Unnamed Group';
+                                final memberCount = _groupMemberCounts[groupId] ?? 0;
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    bottom: index < _groups.length - 1 ? 16 : 0,
+                                  ),
+                                  child: _buildGroupCard(
+                                    groupId: groupId,
+                                    title: groupName,
+                                    memberCount: memberCount,
+                                  ),
+                                );
+                              },
+                            ),
                 ),
               ],
             ),
@@ -81,12 +148,13 @@ class _LotteryScreenState extends State<LotteryScreen> {
   }
 
   Widget _buildGroupCard({
+    required int groupId,
     required String title,
     required int memberCount,
   }) {
     return InkWell(
       onTap: () {
-        _showSelectWinnerModal(context);
+        _showSelectWinnerModal(context, groupId);
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
@@ -129,26 +197,71 @@ class _LotteryScreenState extends State<LotteryScreen> {
     );
   }
 
-  void _showSelectWinnerModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return _SelectWinnerModal(
-          participants: _participants,
-          getAvatarColor: _getAvatarColor,
+  Future<void> _showSelectWinnerModal(BuildContext context, int groupId) async {
+    // Load members for this group
+    try {
+      final members = await _apiService.getGroupMembers(groupId);
+      
+      // Convert members to participants format
+      final participants = members.map((member) {
+        final userName = member['user_name'] as String? ?? 
+                        (member['user_email'] as String? ?? 'Unknown');
+        
+        // Extract initial
+        String initial = '?';
+        if (userName.isNotEmpty) {
+          if (userName.contains('@')) {
+            final emailParts = userName.split('@');
+            if (emailParts.isNotEmpty) {
+              initial = emailParts[0][0].toUpperCase();
+            }
+          } else {
+            initial = userName[0].toUpperCase();
+          }
+        }
+        
+        return {
+          'user_id': member['user_id'] as int,
+          'name': userName,
+          'initial': initial,
+        };
+      }).toList();
+
+      if (!mounted) return;
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (BuildContext context) {
+          return _SelectWinnerModal(
+            groupId: groupId,
+            participants: participants,
+            getAvatarColor: _getAvatarColor,
+          );
+        },
+      );
+    } catch (e) {
+      print('Error loading members: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load members: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
-      },
-    );
+      }
+    }
   }
 }
 
 class _SelectWinnerModal extends StatefulWidget {
+  final int groupId;
   final List<Map<String, dynamic>> participants;
   final Color Function(int) getAvatarColor;
 
   const _SelectWinnerModal({
+    required this.groupId,
     required this.participants,
     required this.getAvatarColor,
   });
@@ -158,7 +271,9 @@ class _SelectWinnerModal extends StatefulWidget {
 }
 
 class _SelectWinnerModalState extends State<_SelectWinnerModal> {
-  String? selectedWinner = 'Daniel Hamilton'; // Default selected
+  int? selectedWinnerUserId;
+  final ApiService _apiService = ApiService();
+  bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -203,15 +318,16 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
               itemCount: widget.participants.length,
               itemBuilder: (context, index) {
                 final participant = widget.participants[index];
-                final isSelected = selectedWinner == participant['name'];
+                final userId = participant['user_id'] as int;
+                final isSelected = selectedWinnerUserId == userId;
                 return _buildParticipantItem(
-                  name: participant['name'],
-                  initial: participant['initial'],
+                  name: participant['name'] as String,
+                  initial: participant['initial'] as String,
                   avatarColor: widget.getAvatarColor(index),
                   isSelected: isSelected,
                   onTap: () {
                     setState(() {
-                      selectedWinner = participant['name'];
+                      selectedWinnerUserId = userId;
                     });
                   },
                 );
@@ -224,10 +340,11 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  // Handle winner selection
-                  Navigator.pop(context);
-                },
+                onPressed: _isSaving || selectedWinnerUserId == null
+                    ? null
+                    : () async {
+                        await _saveWinner();
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D7A4F),
                   foregroundColor: Colors.white,
@@ -236,15 +353,25 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  disabledBackgroundColor: const Color(0xFF6B7280),
                 ),
-                child: const Text(
-                  'Winner',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'DM Sans',
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Winner',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
               ),
             ),
           ),
@@ -325,6 +452,57 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
         ),
       ),
     );
+  }
+
+  Future<void> _saveWinner() async {
+    if (selectedWinnerUserId == null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final result = await _apiService.createDraw(
+        groupId: widget.groupId,
+        winnerUserId: selectedWinnerUserId!,
+        drawType: 'manual_draw',
+      );
+
+      if (result != null && mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Winner saved successfully!'),
+            backgroundColor: Color(0xFF2D7A4F),
+          ),
+        );
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to save winner'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error saving winner: $e');
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving winner: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 

@@ -44,6 +44,8 @@ class AuthService {
       // Create user in backend after successful Firebase authentication
       if (userCredential.user != null) {
         await _apiService.createUserFromFirebase(userCredential.user!);
+        // Get backend JWT token
+        await _apiService.loginWithFirebase(userCredential.user!.uid);
       }
       
       return userCredential;
@@ -107,6 +109,8 @@ class AuthService {
     // Create user in backend after successful Firebase authentication
     if (userCredential.user != null) {
       await _apiService.createUserFromFirebase(userCredential.user!);
+      // Get backend JWT token
+      await _apiService.loginWithFirebase(userCredential.user!.uid);
     }
     
     return userCredential;
@@ -117,6 +121,7 @@ class AuthService {
     await Future.wait([
       _auth.signOut(),
       _googleSignIn.signOut(),
+      _apiService.clearToken(),
     ]);
   }
 }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
-import 'otp_verification_screen.dart';
+import '../services/api_service.dart';
 import '../profile/profile_screen.dart';
+import 'otp_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final AuthService _authService = AuthService();
+  final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String? _verificationId;
 
@@ -34,6 +36,42 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Check if user is already signed in
+    _checkAuthState();
+  }
+
+  Future<void> _checkAuthState() async {
+    final user = _authService.currentUser;
+    if (user != null && mounted) {
+      // User is already signed in, check profile completion
+      await _navigateAfterAuth();
+    }
+  }
+  
+  Future<void> _navigateAfterAuth() async {
+    // Wait a bit for backend to sync
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    final isComplete = await _apiService.isProfileComplete();
+    if (mounted) {
+      if (!isComplete) {
+        // Profile incomplete, navigate to profile screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ProfileScreen(),
+          ),
+        );
+      } else {
+        // Profile complete, navigate to home
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _phoneController.dispose();
     super.dispose();
@@ -47,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null && mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        await _navigateAfterAuth();
       } else {
         setState(() {
           _isLoading = false;
@@ -121,12 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCredential =
           await _authService.verifyOTP(_verificationId!, smsCode);
       if (userCredential.user != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ProfileScreen(),
-          ),
-        );
+        await _navigateAfterAuth();
       }
     } catch (e) {
       rethrow;

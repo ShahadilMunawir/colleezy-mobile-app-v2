@@ -12,6 +12,24 @@ class DrawSelectionScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // Header
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFF141414),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: const Text(
+                  'Draw Selection',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFEFEEEC),
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               flex: 2,
               child: SizedBox(

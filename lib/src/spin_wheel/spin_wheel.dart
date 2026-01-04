@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../services/api_service.dart';
 
 class SpinWheelScreen extends StatefulWidget {
   const SpinWheelScreen({super.key});
@@ -11,26 +12,20 @@ class SpinWheelScreen extends StatefulWidget {
 
 class _SpinWheelScreenState extends State<SpinWheelScreen>
     with SingleTickerProviderStateMixin {
+  final ApiService _apiService = ApiService();
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
-  String? _selectedGroup;
+  int? _selectedGroupId;
+  String? _selectedGroupName;
   bool _isSpinning = false;
   double _rotationAngle = 0.0;
+  List<Map<String, dynamic>> _groups = [];
+  List<Map<String, dynamic>> _members = [];
+  bool _isLoadingGroups = true;
+  bool _isLoadingMembers = false;
 
-  // Dummy group values
-  final List<String> _dummyGroups = [
-    'Group 1',
-    'Group 2',
-    'Group 3',
-    'Family Savings',
-    'Vacation Fund',
-    'Emergency Fund',
-    'Wedding Planning',
-    'Home Renovation',
-  ];
-
-  // Wheel segments with values
-  final List<int> _wheelValues = [10, 20, 30, 40, 50, 60, 70, 80, 100, 200, 300, 400];
+  // Wheel segments - will be populated with member indices
+  List<int> _wheelValues = [];
   final Color _lightGreen = const Color(0xFF8BC34A); // Lime green
   final Color _darkGreen = const Color(0xFF2E7D32); // Forest green
 
@@ -48,6 +43,76 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       parent: _controller,
       curve: Curves.decelerate,
     ));
+    _loadGroups();
+  }
+
+  Future<void> _loadGroups() async {
+    setState(() {
+      _isLoadingGroups = true;
+    });
+
+    try {
+      final groups = await _apiService.getGroups();
+      if (mounted) {
+        setState(() {
+          _groups = groups;
+          _isLoadingGroups = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading groups: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingGroups = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMembers(int groupId) async {
+    setState(() {
+      _isLoadingMembers = true;
+    });
+
+    try {
+      final members = await _apiService.getGroupMembers(groupId);
+      
+      // Create wheel values based on member count
+      // Always create 12 segments for the wheel
+      final memberCount = members.length;
+      List<int> wheelValues = [];
+      
+      if (memberCount == 0) {
+        // No members - show placeholder numbers
+        wheelValues = List.generate(12, (index) => index);
+      } else if (memberCount <= 12) {
+        // Use member indices directly, repeat if needed to fill 12 segments
+        wheelValues = List.generate(12, (index) => index % memberCount);
+      } else {
+        // More than 12 members - distribute evenly across 12 segments
+        // Each segment represents a range of members
+        wheelValues = List.generate(12, (index) {
+          // Map segment index to member index
+          // This ensures all members have a chance to be selected
+          return ((index * memberCount) / 12).floor();
+        });
+      }
+      
+      if (mounted) {
+        setState(() {
+          _members = members;
+          _wheelValues = wheelValues;
+          _isLoadingMembers = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading members: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingMembers = false;
+        });
+      }
+    }
   }
 
   @override
@@ -107,11 +172,68 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     return 0;
   }
 
-  void _showWinnerDialog(int winningNumber) {
+  Future<void> _showWinnerDialog(int winningSegmentIndex) async {
+    if (_selectedGroupId == null || _members.isEmpty) {
+      return;
+    }
+
+    // Get the winner from the wheel segment
+    final winnerIndex = _wheelValues[winningSegmentIndex];
+    if (winnerIndex >= _members.length) {
+      // Handle case where index is out of bounds
+      return;
+    }
+
+    final winner = _members[winnerIndex];
+    final winnerUserId = winner['user_id'] as int;
+    final winnerName = winner['user_name'] as String? ?? 
+                      (winner['user_email'] as String? ?? 'Unknown');
+    
+    // Extract name from email if needed
+    String displayName = winnerName;
+    if (winnerName.contains('@')) {
+      final emailParts = winnerName.split('@');
+      if (emailParts.isNotEmpty) {
+        displayName = emailParts[0].split('.').map((part) {
+          if (part.isEmpty) return part;
+          return part[0].toUpperCase() + part.substring(1).toLowerCase();
+        }).join(' ');
+      }
+    }
+
+    // Save the draw result
+    bool drawSaved = false;
+    try {
+      final result = await _apiService.createDraw(
+        groupId: _selectedGroupId!,
+        winnerUserId: winnerUserId,
+        drawType: 'spin_wheel',
+      );
+      drawSaved = result != null;
+      if (drawSaved) {
+        print('Draw saved successfully: $result');
+      } else {
+        print('Failed to save draw - result was null');
+      }
+    } catch (e) {
+      print('Error saving draw result: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save winner: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: const Color(0xFF171717),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -125,7 +247,8 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: Colors.white,
+                    fontFamily: 'DM Sans',
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -138,22 +261,35 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                   ),
                   child: Center(
                     child: Text(
-                      winningNumber.toString(),
+                      displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
                       style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
+                        fontFamily: 'DM Sans',
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'You won!',
-                  style: TextStyle(
+                Text(
+                  displayName,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
+                    color: Color(0xFFD0CDC6),
+                    fontFamily: 'DM Sans',
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'is the winner!',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFFA5A5A5),
+                    fontFamily: 'DM Sans',
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -177,6 +313,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      fontFamily: 'DM Sans',
                     ),
                   ),
                 ),
@@ -189,7 +326,17 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   }
 
   void _spinWheel() {
-    if (_isSpinning) return;
+    if (_isSpinning || _selectedGroupId == null || _members.isEmpty) {
+      if (_selectedGroupId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a group first'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
     
     // Random rotation: 5-10 full rotations + random angle
     final random = math.Random();
@@ -219,10 +366,9 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
         _isSpinning = false;
       });
       
-      // Calculate and show winning number
+      // Calculate and show winner
       final winningSegmentIndex = _getWinningSegment(finalAngle);
-      final winningNumber = _wheelValues[winningSegmentIndex];
-      _showWinnerDialog(winningNumber);
+      _showWinnerDialog(winningSegmentIndex);
     });
   }
 
@@ -287,49 +433,81 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Color(0xFF141414),
+                    color: const Color(0xFF141414),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedGroup,
-                      isExpanded: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      hint: const Text(
-                        'Select Group',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: Color(0xFFD0CDC6)
+                  child: _isLoadingGroups
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                            ),
+                          ),
+                        )
+                      : DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedGroupName,
+                            isExpanded: true,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            hint: const Text(
+                              'Select Group',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFFD0CDC6),
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Color(0xFF6B7280),
+                              size: 24,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w400,
+                              color: Color(0xFFD0CDC6),
+                              fontFamily: 'DM Sans',
+                            ),
+                            dropdownColor: const Color(0xFF141414),
+                            items: _groups.map((group) {
+                              final groupName = group['name'] as String? ?? 'Unnamed Group';
+                              return DropdownMenuItem<String>(
+                                value: groupName,
+                                child: Text(groupName),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue != null) {
+                                final selectedGroup = _groups.firstWhere(
+                                  (g) => g['name'] == newValue,
+                                );
+                                final groupId = selectedGroup['id'] as int;
+                                setState(() {
+                                  _selectedGroupName = newValue;
+                                  _selectedGroupId = groupId;
+                                  _members = [];
+                                  _wheelValues = [];
+                                });
+                                _loadMembers(groupId);
+                              }
+                            },
+                          ),
                         ),
+                ),
+                if (_isLoadingMembers)
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
                       ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF6B7280),
-                        size: 24,
-                      ),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFD0CDC6),
-                      ),
-                      items: _dummyGroups.map((String group) {
-                        return DropdownMenuItem<String>(
-                          value: group,
-                          child: Text(group),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedGroup = newValue;
-                        });
-                      },
                     ),
                   ),
-                ),
                 const SizedBox(height: 32),
                 // Spin the Wheel Title
                 const Text(
@@ -360,6 +538,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                   size: const Size(320, 320),
                                   painter: WheelPainter(
                                     values: _wheelValues,
+                                    members: _members,
                                     lightGreen: _lightGreen,
                                     darkGreen: _darkGreen,
                                   ),
@@ -377,12 +556,16 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                           ),
                           // Spin button in center
                           GestureDetector(
-                            onTap: _spinWheel,
+                            onTap: _isSpinning || _selectedGroupId == null || _members.isEmpty
+                                ? null
+                                : _spinWheel,
                             child: Container(
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF374151),
+                                color: _isSpinning || _selectedGroupId == null || _members.isEmpty
+                                    ? const Color(0xFF6B7280)
+                                    : const Color(0xFF374151),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -392,11 +575,20 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.star,
-                                color: Colors.white,
-                                size: 28,
-                              ),
+                              child: _isSpinning
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.star,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
                             ),
                           ),
                         ],
@@ -417,11 +609,13 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
 // Custom painter for the wheel
 class WheelPainter extends CustomPainter {
   final List<int> values;
+  final List<Map<String, dynamic>> members;
   final Color lightGreen;
   final Color darkGreen;
 
   WheelPainter({
     required this.values,
+    required this.members,
     required this.lightGreen,
     required this.darkGreen,
   });
@@ -480,13 +674,43 @@ class WheelPainter extends CustomPainter {
       final textX = center.dx + textRadius * math.cos(textAngle);
       final textY = center.dy + textRadius * math.sin(textAngle);
 
+      // Get member name or index
+      String displayText;
+      if (members.isNotEmpty && values[i] < members.length) {
+        final member = members[values[i]];
+        final name = member['user_name'] as String? ?? 
+                    (member['user_email'] as String? ?? 'Member ${values[i] + 1}');
+        // Extract first name or first part of email
+        if (name.contains('@')) {
+          final emailParts = name.split('@');
+          if (emailParts.isNotEmpty) {
+            displayText = emailParts[0].split('.').first;
+            if (displayText.length > 6) {
+              displayText = displayText.substring(0, 6);
+            }
+          } else {
+            displayText = 'M${values[i] + 1}';
+          }
+        } else {
+          final nameParts = name.split(' ');
+          displayText = nameParts.isNotEmpty ? nameParts[0] : 'M${values[i] + 1}';
+          if (displayText.length > 6) {
+            displayText = displayText.substring(0, 6);
+          }
+        }
+      } else {
+        // No members or invalid index - show number
+        displayText = '${values[i] + 1}';
+      }
+
       final textPainter = TextPainter(
         text: TextSpan(
-          text: values[i].toString(),
+          text: displayText,
           style: const TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w700,
             color: Color(0xFF1F2937),
+            fontFamily: 'DM Sans',
           ),
         ),
         textDirection: TextDirection.ltr,

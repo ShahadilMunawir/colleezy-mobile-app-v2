@@ -7,7 +7,3 @@ void main() async {
   await Firebase.initializeApp();
   runApp(const ColleezyApp());
 }
-
-
-
-

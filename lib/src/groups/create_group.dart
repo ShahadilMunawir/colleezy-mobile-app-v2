@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:dotted_border/dotted_border.dart';
 import '../../theme/app_colors.dart';
+import '../services/api_service.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -14,7 +14,6 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _groupNameController = TextEditingController();
   final _startingDateController = TextEditingController();
   final _totalAmountController = TextEditingController();
-  final _numberOfMembersController = TextEditingController();
   final _individualPaymentController = TextEditingController();
   final _durationController = TextEditingController();
   final _amountPerPeriodController = TextEditingController(text: '0.00');
@@ -22,13 +21,14 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _percentageController = TextEditingController();
   String _collectPeriod = 'Monthly';
   bool _commissionYes = false;
+  bool _isLoading = false;
+  final ApiService _apiService = ApiService();
 
   @override
   void dispose() {
     _groupNameController.dispose();
     _startingDateController.dispose();
     _totalAmountController.dispose();
-    _numberOfMembersController.dispose();
     _individualPaymentController.dispose();
     _durationController.dispose();
     _amountPerPeriodController.dispose();
@@ -113,14 +113,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   controller: _totalAmountController,
                   placeholder: 'Total Amount (eg: \$10.00)',
-                ),
-                const SizedBox(height: 24),
-                // Number of Members
-                _buildLabel('Number of Members'),
-                const SizedBox(height: 8),
-                _buildTextField(
-                  controller: _numberOfMembersController,
-                  placeholder: 'Number of members (eg: 20 people)',
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
                 // Individual Payment
@@ -129,6 +122,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   controller: _individualPaymentController,
                   placeholder: 'Individual payment',
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
                 // Duration
@@ -137,6 +131,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   controller: _durationController,
                   placeholder: 'Duration',
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
                 // Amount Per Period
@@ -145,6 +140,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   controller: _amountPerPeriodController,
                   placeholder: '0.00',
+                  keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
                 // Collect Period & Duration (Period) - Side by side
@@ -170,6 +166,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           _buildTextField(
                             controller: _durationPeriodController,
                             placeholder: '0.00',
+                            keyboardType: TextInputType.number,
                           ),
                         ],
                       ),
@@ -213,6 +210,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String placeholder,
+    TextInputType? keyboardType,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -221,10 +219,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       ),
       child: TextFormField(
         controller: controller,
+        keyboardType: keyboardType,
         style: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w400,
-          color: Color(0xFF141414),
+          color: AppColors.textTertiary,
           fontFamily: 'DM Sans',
         ),
         decoration: InputDecoration(
@@ -488,17 +487,118 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     );
   }
 
+  Future<void> _handleSave() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Validate required fields
+    if (_groupNameController.text.trim().isEmpty) {
+      _showError('Please enter a group name');
+      return;
+    }
+
+    if (_startingDateController.text.trim().isEmpty) {
+      _showError('Please select a starting date');
+      return;
+    }
+
+    if (_totalAmountController.text.trim().isEmpty) {
+      _showError('Please enter total amount');
+      return;
+    }
+
+    if (_durationController.text.trim().isEmpty) {
+      _showError('Please enter duration');
+      return;
+    }
+
+    if (_amountPerPeriodController.text.trim().isEmpty) {
+      _showError('Please enter amount per period');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Parse starting date (format: MM/DD/YYYY)
+      final dateParts = _startingDateController.text.split('/');
+      if (dateParts.length != 3) {
+        throw Exception('Invalid date format');
+      }
+      final startingDate = DateTime(
+        int.parse(dateParts[2]),
+        int.parse(dateParts[0]),
+        int.parse(dateParts[1]),
+      );
+
+      // Parse numeric values
+      final totalAmount = double.tryParse(_totalAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      final duration = int.tryParse(_durationController.text) ?? 0;
+      final amountPerPeriod = double.tryParse(_amountPerPeriodController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+
+      // Map collection period
+      String collectionPeriod = 'monthly';
+      if (_collectPeriod.toLowerCase() == 'weekly') {
+        collectionPeriod = 'weekly';
+      } else if (_collectPeriod.toLowerCase() == 'monthly') {
+        collectionPeriod = 'monthly';
+      }
+
+      // Create group via API
+      final result = await _apiService.createGroup(
+        name: _groupNameController.text.trim(),
+        startingDate: startingDate,
+        totalAmount: totalAmount,
+        duration: duration,
+        amountPerPeriod: amountPerPeriod,
+        collectionPeriod: collectionPeriod,
+      );
+
+      if (result != null && mounted) {
+        Navigator.of(context).pop(true); // Return true to indicate success
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Group created successfully!'),
+            backgroundColor: Color(0xFF2D7A4F),
+          ),
+        );
+      } else {
+        if (mounted) {
+          _showError('Failed to create group. Please try again.');
+        }
+      }
+    } catch (e) {
+      print('Error creating group: $e');
+      if (mounted) {
+        _showError('Error creating group: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            // Handle save logic here
-            Navigator.of(context).pop();
-          }
-        },
+        onPressed: _isLoading ? null : _handleSave,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -506,15 +606,25 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          disabledBackgroundColor: const Color(0xFF9CA3AF),
         ),
-        child: const Text(
-          'Save',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'DM Sans',
-          ),
-        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'Save',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
       ),
     );
   }
