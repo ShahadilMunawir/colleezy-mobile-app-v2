@@ -14,10 +14,13 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  final ValueNotifier<int> _groupsRefreshTrigger = ValueNotifier<int>(0);
 
-  final List<Widget> _pages = [
+  List<Widget> get _pages => [
     const HomeScreen(),
-    const GroupsScreen(),
+    GroupsScreen(
+      key: ValueKey(_groupsRefreshTrigger.value),
+    ),
     const DrawSelectionScreen(),
     const HistoryScreen(),
   ];
@@ -26,6 +29,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _selectedIndex = index;
     });
+    // Refresh groups when navigating to groups tab
+    if (index == 1) {
+      _groupsRefreshTrigger.value++;
+    }
   }
 
   @override

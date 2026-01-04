@@ -211,14 +211,14 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
             ),
             // Collect New Button (only for agents)
             if (widget.currentUserIsAgent)
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: Center(
-                  child: IntrinsicWidth(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showCollectNewModal(context);
-                      },
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: IntrinsicWidth(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _showCollectNewModal(context);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2D7A4F),
                       foregroundColor: Colors.white,
@@ -260,11 +260,11 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           ),
                         ),
                       ],
-                      ),
                     ),
                   ),
                 ),
               ),
+            ),
           ],
         ),
       ),

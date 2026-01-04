@@ -446,48 +446,48 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                           ),
                         )
                       : DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
+                    child: DropdownButton<String>(
                             value: _selectedGroupName,
-                            isExpanded: true,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
-                            ),
-                            hint: const Text(
-                              'Select Group',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w400,
+                      isExpanded: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      hint: const Text(
+                        'Select Group',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
                                 color: Color(0xFFD0CDC6),
                                 fontFamily: 'DM Sans',
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Color(0xFF6B7280),
-                              size: 24,
-                            ),
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w400,
-                              color: Color(0xFFD0CDC6),
+                        ),
+                      ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Color(0xFF6B7280),
+                        size: 24,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFFD0CDC6),
                               fontFamily: 'DM Sans',
-                            ),
+                      ),
                             dropdownColor: const Color(0xFF141414),
                             items: _groups.map((group) {
                               final groupName = group['name'] as String? ?? 'Unnamed Group';
-                              return DropdownMenuItem<String>(
+                        return DropdownMenuItem<String>(
                                 value: groupName,
                                 child: Text(groupName),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
                               if (newValue != null) {
                                 final selectedGroup = _groups.firstWhere(
                                   (g) => g['name'] == newValue,
                                 );
                                 final groupId = selectedGroup['id'] as int;
-                                setState(() {
+                        setState(() {
                                   _selectedGroupName = newValue;
                                   _selectedGroupId = groupId;
                                   _members = [];
@@ -505,9 +505,9 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                     child: Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
-                      ),
                     ),
                   ),
+                ),
                 const SizedBox(height: 32),
                 // Spin the Wheel Title
                 const Text(
@@ -585,10 +585,10 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                       ),
                                     )
                                   : const Icon(
-                                      Icons.star,
-                                      color: Colors.white,
-                                      size: 28,
-                                    ),
+                                Icons.star,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                             ),
                           ),
                         ],

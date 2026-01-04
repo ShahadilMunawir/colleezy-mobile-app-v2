@@ -17,10 +17,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _individualPaymentController = TextEditingController();
   final _durationController = TextEditingController();
   final _amountPerPeriodController = TextEditingController(text: '0.00');
-  final _durationPeriodController = TextEditingController(text: '0.00');
   final _percentageController = TextEditingController();
+  final _cashCommissionController = TextEditingController();
   String _collectPeriod = 'Monthly';
   bool _commissionYes = false;
+  String _commissionType = 'percentage'; // 'percentage' or 'cash'
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
 
@@ -32,8 +33,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     _individualPaymentController.dispose();
     _durationController.dispose();
     _amountPerPeriodController.dispose();
-    _durationPeriodController.dispose();
     _percentageController.dispose();
+    _cashCommissionController.dispose();
     super.dispose();
   }
 
@@ -143,36 +144,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 24),
-                // Collect Period & Duration (Period) - Side by side
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Collect Period'),
-                          const SizedBox(height: 8),
-                          _buildDropdownField(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Duration (Period)'),
-                          const SizedBox(height: 8),
-                          _buildTextField(
-                            controller: _durationPeriodController,
-                            placeholder: '0.00',
-                            keyboardType: TextInputType.number,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                // Collect Period
+                _buildLabel('Collect Period'),
+                const SizedBox(height: 8),
+                _buildDropdownField(),
                     const SizedBox(height: 32),
                     // Lottery Rules Section
                     _buildLotteryRulesSection(),
@@ -430,7 +405,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Percentage',
+          'Commission Type',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -439,50 +414,188 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF141414),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: TextFormField(
-            controller: _percentageController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFFE0DED9),
-              fontFamily: 'DM Sans',
-            ),
-            decoration: InputDecoration(
-              prefixIcon: const Padding(
-                padding: EdgeInsets.only(left: 16, right: 8),
-                child: Text(
-                  '%',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFFE0DED9),
-                    fontFamily: 'DM Sans',
+        // Commission Type Selector
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _commissionType = 'percentage';
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: _commissionType == 'percentage'
+                        ? const Color(0xFF2D7A4F)
+                        : const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _commissionType == 'percentage'
+                          ? const Color(0xFF2D7A4F)
+                          : const Color(0xFF3A3A3A),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Percentage',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFFE0DED9),
+                        fontFamily: 'DM Sans',
+                      ),
+                    ),
                   ),
                 ),
               ),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 0,
-                minHeight: 0,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _commissionType = 'cash';
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: _commissionType == 'cash'
+                        ? const Color(0xFF2D7A4F)
+                        : const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _commissionType == 'cash'
+                          ? const Color(0xFF2D7A4F)
+                          : const Color(0xFF3A3A3A),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Cash',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFFE0DED9),
+                        fontFamily: 'DM Sans',
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Input field based on commission type
+        if (_commissionType == 'percentage')
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextFormField(
+              controller: _percentageController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFFE0DED9),
+                fontFamily: 'DM Sans',
               ),
-              filled: true,
-              fillColor: const Color(0xFF141414),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
+              decoration: InputDecoration(
+                hintText: 'Enter percentage',
+                hintStyle: const TextStyle(
+                  color: Color(0xFFA5A5A5),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'DM Sans',
+                ),
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 16, right: 8),
+                  child: Text(
+                    '%',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFE0DED9),
+                      fontFamily: 'DM Sans',
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 0,
+                  minHeight: 0,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFF141414),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextFormField(
+              controller: _cashCommissionController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFFE0DED9),
+                fontFamily: 'DM Sans',
+              ),
+              decoration: InputDecoration(
+                hintText: 'Enter amount (e.g., \$10.00)',
+                hintStyle: const TextStyle(
+                  color: Color(0xFFA5A5A5),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'DM Sans',
+                ),
+                prefixIcon: const Padding(
+                  padding: EdgeInsets.only(left: 16, right: 8),
+                  child: Text(
+                    '\$',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFE0DED9),
+                      fontFamily: 'DM Sans',
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 0,
+                  minHeight: 0,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: const Color(0xFF141414),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -536,6 +649,50 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
       // Parse numeric values
       final totalAmount = double.tryParse(_totalAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      
+      // Validate commission fields if commission is enabled
+      if (_commissionYes) {
+        if (_commissionType == 'percentage') {
+          if (_percentageController.text.trim().isEmpty) {
+            _showError('Please enter commission percentage');
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+          final percentage = double.tryParse(_percentageController.text.trim().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+          if (percentage <= 0 || percentage > 100) {
+            _showError('Commission percentage must be between 0 and 100');
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        } else if (_commissionType == 'cash') {
+          if (_cashCommissionController.text.trim().isEmpty) {
+            _showError('Please enter commission amount');
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+          final cashAmount = double.tryParse(_cashCommissionController.text.trim().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+          if (cashAmount <= 0) {
+            _showError('Commission amount must be greater than 0');
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+          if (cashAmount >= totalAmount) {
+            _showError('Commission amount must be less than total amount');
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+      }
       final duration = int.tryParse(_durationController.text) ?? 0;
       final amountPerPeriod = double.tryParse(_amountPerPeriodController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
 
@@ -547,6 +704,26 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         collectionPeriod = 'monthly';
       }
 
+      // Handle commission
+      bool hasCommission = _commissionYes;
+      String? commissionType;
+      double? commissionValue;
+      
+      if (hasCommission) {
+        commissionType = _commissionType;
+        if (_commissionType == 'percentage') {
+          final percentageText = _percentageController.text.trim();
+          if (percentageText.isNotEmpty) {
+            commissionValue = double.tryParse(percentageText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+          }
+        } else if (_commissionType == 'cash') {
+          final cashText = _cashCommissionController.text.trim();
+          if (cashText.isNotEmpty) {
+            commissionValue = double.tryParse(cashText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+          }
+        }
+      }
+
       // Create group via API
       final result = await _apiService.createGroup(
         name: _groupNameController.text.trim(),
@@ -555,6 +732,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         duration: duration,
         amountPerPeriod: amountPerPeriod,
         collectionPeriod: collectionPeriod,
+        hasCommission: hasCommission,
+        commissionType: commissionType,
+        commissionValue: commissionValue,
       );
 
       if (result != null && mounted) {

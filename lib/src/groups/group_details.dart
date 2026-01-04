@@ -4,6 +4,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'chat_screen.dart';
 import 'member_details.dart';
+import 'group_info_screen.dart';
 import '../services/api_service.dart';
 
 class GroupDetailsScreen extends StatefulWidget {
@@ -144,13 +145,25 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            widget.groupName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFFEFEEEC),
-                              fontFamily: 'DM Sans',
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => GroupInfoScreen(
+                                    groupId: widget.groupId,
+                                    groupName: widget.groupName,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              widget.groupName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFEFEEEC),
+                                fontFamily: 'DM Sans',
+                              ),
                             ),
                           ),
                           const SizedBox(height: 2),

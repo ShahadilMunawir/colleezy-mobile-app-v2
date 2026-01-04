@@ -330,16 +330,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             )
                           : SizedBox(
                               height: 180,
-                              child: PageView(
-                                padEnds: false,
-                                controller: _pageController,
-                                onPageChanged: (index) {
-                                  setState(() {
-                                    _currentPage = index;
-                                  });
-                                },
-                                children: _buildGroupCards(),
-                              ),
+                              child: _groups.length == 1
+                                  ? Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                                      child: _buildGroupCards().first,
+                                    )
+                                  : PageView(
+                                      padEnds: false,
+                                      controller: _pageController,
+                                      onPageChanged: (index) {
+                                        setState(() {
+                                          _currentPage = index;
+                                        });
+                                      },
+                                      children: _buildGroupCards(),
+                                    ),
                             ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -552,8 +557,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: SvgPicture.asset(
               svgPath,
-              width: 24,
-              height: 24,
+              width: 28,
+              height: 28,
               colorFilter: ColorFilter.mode(
                 color,
                 BlendMode.srcIn,
@@ -565,7 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label,
             style: const TextStyle(
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: Color(0xFFD0CDC6),
             ),
           ),
@@ -653,12 +658,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final totalAmount = (group['total_amount'] as num?)?.toDouble() ?? 0.0;
       final memberCount = _groupMemberCounts[groupId] ?? 0;
       final isLast = index == _groups.length - 1;
-
+      
       return GroupCard(
         title: groupName,
         amount: totalAmount.toStringAsFixed(0),
         totalMembers: memberCount.toString(),
         isLast: isLast,
+        isSingle: _groups.length == 1,
       );
     });
   }
@@ -787,6 +793,7 @@ class GroupCard extends StatelessWidget {
   final String amount;
   final String totalMembers;
   final bool isLast;
+  final bool isSingle;
 
   const GroupCard({
     super.key,
@@ -794,14 +801,17 @@ class GroupCard extends StatelessWidget {
     required this.amount,
     required this.totalMembers,
     this.isLast = false,
+    this.isSingle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: isLast
-          ? const EdgeInsets.symmetric(horizontal: 20)
-          : const EdgeInsets.only(left: 20),
+      margin: isSingle
+          ? EdgeInsets.zero
+          : (isLast
+              ? const EdgeInsets.symmetric(horizontal: 20)
+              : const EdgeInsets.only(left: 20)),
       width: double.infinity,
       height: 180,
       decoration: BoxDecoration(

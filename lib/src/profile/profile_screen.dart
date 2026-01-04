@@ -323,7 +323,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
         // Convert relative URL to full URL
         if (photoUrl.startsWith('/')) {
-          photoUrl = 'http://192.168.1.14:8000$photoUrl';
+          final baseUrlWithoutApi = ApiService.baseUrl.replaceAll('/api/v1', '');
+          photoUrl = '$baseUrlWithoutApi$photoUrl';
         }
       }
 

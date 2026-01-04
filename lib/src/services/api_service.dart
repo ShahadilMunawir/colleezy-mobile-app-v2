@@ -3,13 +3,14 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  // TODO: Update this with your backend URL
+  // Get base URL from environment variables
   // For Android emulator, use: http://10.0.2.2:8000/api/v1
   // For iOS simulator, use: http://localhost:8000/api/v1
   // For physical devices, use your computer's IP address: http://YOUR_IP:8000/api/v1
-  static const String baseUrl = 'http://192.168.1.14:8000/api/v1';
+  static String get baseUrl => dotenv.env['BASE_URL'] ?? 'http://192.168.1.14:8000/api/v1';
   static const String _tokenKey = 'backend_jwt_token';
   
   // Cache SharedPreferences instance to avoid multiple initializations
@@ -333,6 +334,9 @@ class ApiService {
     required int duration,
     required double amountPerPeriod,
     required String collectionPeriod, // 'weekly' or 'monthly'
+    bool hasCommission = false,
+    String? commissionType,
+    double? commissionValue,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups');
@@ -348,6 +352,15 @@ class ApiService {
         'amount_per_period': amountPerPeriod,
         'collection_period': collectionPeriod.toLowerCase(),
       };
+      
+      // Add commission fields if commission is enabled
+      if (hasCommission && commissionType != null && commissionValue != null) {
+        body['has_commission'] = true;
+        body['commission_type'] = commissionType;
+        body['commission_value'] = commissionValue;
+      } else {
+        body['has_commission'] = false;
+      }
       
       final response = await http.post(
         url,

@@ -224,12 +224,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                 child: const Text(
-                  'History',
-                  style: TextStyle(
+                        'History',
+                        style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFEFEEEC),
-                  ),
+                          color: Color(0xFFEFEEEC),
+                    ),
                 ),
               ),
             ),

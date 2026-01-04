@@ -202,10 +202,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
             child: _buildGroupCard(
               groupId: group['id'] as int,
               title: group['name'] as String? ?? 'Unnamed Group',
-              startingDate: group['starting_date'] as String?,
-              totalAmount: (group['total_amount'] as num?)?.toDouble() ?? 0.0,
-              amountPerPeriod: (group['amount_per_period'] as num?)?.toDouble() ?? 0.0,
-              collectionPeriod: group['collection_period'] as String? ?? 'monthly',
+              memberCount: group['member_count'] as int? ?? 0,
             ),
           );
         },
@@ -216,25 +213,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Widget _buildGroupCard({
     required int groupId,
     required String title,
-    String? startingDate,
-    required double totalAmount,
-    required double amountPerPeriod,
-    required String collectionPeriod,
+    required int memberCount,
   }) {
-    // Format date if available
-    String? formattedDate;
-    if (startingDate != null) {
-      try {
-        final date = DateTime.parse(startingDate);
-        formattedDate = '${date.month}/${date.day}/${date.year}';
-      } catch (e) {
-        formattedDate = startingDate;
-      }
-    }
-
-    // Format collection period
-    final periodText = collectionPeriod == 'weekly' ? 'Weekly' : 'Monthly';
-
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -257,62 +237,22 @@ class _GroupsScreenState extends State<GroupsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFF2F2F2),
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFF2F2F2),
+              ),
             ),
             const SizedBox(height: 8),
-            if (formattedDate != null) ...[
-              Text(
-                'Starts: $formattedDate',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFFC1BDB3),
-                ),
+            Text(
+              '$memberCount ${memberCount == 1 ? 'member' : 'members'}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Color(0xFFC1BDB3),
               ),
-              const SizedBox(height: 4),
-            ],
-            Row(
-              children: [
-                Text(
-                  '\$${totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF2D7A4F),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '• $periodText',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFFC1BDB3),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '• \$${amountPerPeriod.toStringAsFixed(2)}/period',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: Color(0xFFC1BDB3),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

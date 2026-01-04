@@ -119,7 +119,7 @@ class _LotteryScreenState extends State<LotteryScreen> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(20),
                               itemCount: _groups.length,
                               itemBuilder: (context, index) {
                                 final group = _groups[index];
@@ -137,7 +137,7 @@ class _LotteryScreenState extends State<LotteryScreen> {
                                   ),
                                 );
                               },
-                            ),
+                  ),
                 ),
               ],
             ),
@@ -229,18 +229,18 @@ class _LotteryScreenState extends State<LotteryScreen> {
 
       if (!mounted) return;
 
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (BuildContext context) {
-          return _SelectWinnerModal(
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return _SelectWinnerModal(
             groupId: groupId,
             participants: participants,
-            getAvatarColor: _getAvatarColor,
-          );
-        },
-      );
+          getAvatarColor: _getAvatarColor,
+        );
+      },
+    );
     } catch (e) {
       print('Error loading members: $e');
       if (mounted) {
@@ -344,7 +344,7 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
                     ? null
                     : () async {
                         await _saveWinner();
-                      },
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2D7A4F),
                   foregroundColor: Colors.white,
@@ -365,13 +365,13 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
                         ),
                       )
                     : const Text(
-                        'Winner',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'DM Sans',
-                        ),
-                      ),
+                  'Winner',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'DM Sans',
+                  ),
+                ),
               ),
             ),
           ),
