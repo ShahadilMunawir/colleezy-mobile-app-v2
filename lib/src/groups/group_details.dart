@@ -7,6 +7,56 @@ import 'member_details.dart';
 import 'group_info_screen.dart';
 import '../services/api_service.dart';
 
+/// Country data for the country code picker
+class _Country {
+  final String name;
+  final String code;
+  final String dialCode;
+  final String flag;
+  final int phoneLength;
+
+  const _Country({
+    required this.name,
+    required this.code,
+    required this.dialCode,
+    required this.flag,
+    required this.phoneLength,
+  });
+}
+
+const List<_Country> _countries = [
+  _Country(name: 'United States', code: 'US', dialCode: '+1', flag: '🇺🇸', phoneLength: 10),
+  _Country(name: 'United Kingdom', code: 'GB', dialCode: '+44', flag: '🇬🇧', phoneLength: 10),
+  _Country(name: 'India', code: 'IN', dialCode: '+91', flag: '🇮🇳', phoneLength: 10),
+  _Country(name: 'Canada', code: 'CA', dialCode: '+1', flag: '🇨🇦', phoneLength: 10),
+  _Country(name: 'Australia', code: 'AU', dialCode: '+61', flag: '🇦🇺', phoneLength: 9),
+  _Country(name: 'Germany', code: 'DE', dialCode: '+49', flag: '🇩🇪', phoneLength: 11),
+  _Country(name: 'France', code: 'FR', dialCode: '+33', flag: '🇫🇷', phoneLength: 9),
+  _Country(name: 'Japan', code: 'JP', dialCode: '+81', flag: '🇯🇵', phoneLength: 10),
+  _Country(name: 'China', code: 'CN', dialCode: '+86', flag: '🇨🇳', phoneLength: 11),
+  _Country(name: 'Brazil', code: 'BR', dialCode: '+55', flag: '🇧🇷', phoneLength: 11),
+  _Country(name: 'Mexico', code: 'MX', dialCode: '+52', flag: '🇲🇽', phoneLength: 10),
+  _Country(name: 'South Korea', code: 'KR', dialCode: '+82', flag: '🇰🇷', phoneLength: 10),
+  _Country(name: 'Italy', code: 'IT', dialCode: '+39', flag: '🇮🇹', phoneLength: 10),
+  _Country(name: 'Spain', code: 'ES', dialCode: '+34', flag: '🇪🇸', phoneLength: 9),
+  _Country(name: 'Netherlands', code: 'NL', dialCode: '+31', flag: '🇳🇱', phoneLength: 9),
+  _Country(name: 'Singapore', code: 'SG', dialCode: '+65', flag: '🇸🇬', phoneLength: 8),
+  _Country(name: 'UAE', code: 'AE', dialCode: '+971', flag: '🇦🇪', phoneLength: 9),
+  _Country(name: 'Saudi Arabia', code: 'SA', dialCode: '+966', flag: '🇸🇦', phoneLength: 9),
+  _Country(name: 'South Africa', code: 'ZA', dialCode: '+27', flag: '🇿🇦', phoneLength: 9),
+  _Country(name: 'Nigeria', code: 'NG', dialCode: '+234', flag: '🇳🇬', phoneLength: 10),
+  _Country(name: 'Pakistan', code: 'PK', dialCode: '+92', flag: '🇵🇰', phoneLength: 10),
+  _Country(name: 'Bangladesh', code: 'BD', dialCode: '+880', flag: '🇧🇩', phoneLength: 10),
+  _Country(name: 'Indonesia', code: 'ID', dialCode: '+62', flag: '🇮🇩', phoneLength: 11),
+  _Country(name: 'Philippines', code: 'PH', dialCode: '+63', flag: '🇵🇭', phoneLength: 10),
+  _Country(name: 'Vietnam', code: 'VN', dialCode: '+84', flag: '🇻🇳', phoneLength: 9),
+  _Country(name: 'Thailand', code: 'TH', dialCode: '+66', flag: '🇹🇭', phoneLength: 9),
+  _Country(name: 'Malaysia', code: 'MY', dialCode: '+60', flag: '🇲🇾', phoneLength: 10),
+  _Country(name: 'Russia', code: 'RU', dialCode: '+7', flag: '🇷🇺', phoneLength: 10),
+  _Country(name: 'Turkey', code: 'TR', dialCode: '+90', flag: '🇹🇷', phoneLength: 10),
+  _Country(name: 'Egypt', code: 'EG', dialCode: '+20', flag: '🇪🇬', phoneLength: 10),
+];
+
 class GroupDetailsScreen extends StatefulWidget {
   final int groupId;
   final String groupName;
@@ -378,6 +428,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               (email != null && email.isNotEmpty ? _extractNameFromEmail(email) : 'Unknown User');
           final initial = _getInitial(displayName);
           
+          final memberNumber = member['member_number'] as int? ?? (index + 1);
+          
           return _buildMemberItem(
             memberId: member['id'] as int,
             userId: member['user_id'] as int,
@@ -387,6 +439,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             initial: initial,
             avatarColor: _getAvatarColor(index),
             isAgent: isAgent,
+            memberNumber: memberNumber,
           );
         },
       ),
@@ -425,6 +478,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     required String initial,
     required Color avatarColor,
     required bool isAgent,
+    required int memberNumber,
   }) {
     return InkWell(
       onTap: () {
@@ -467,7 +521,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            // Name and role
+            // Name and role with member number
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +537,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    role,
+                    '#$memberNumber • $role',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
@@ -603,6 +657,120 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     }
   }
 
+  void _confirmRemoveMember(String memberName, int userId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF171717),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Remove Member',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'DM Sans',
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to remove $memberName from this group?',
+            style: const TextStyle(
+              color: Color(0xFFD0CDC6),
+              fontFamily: 'DM Sans',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Color(0xFFA5A5A5),
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _removeMember(userId);
+              },
+              child: const Text(
+                'Remove',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _removeMember(int userId) async {
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+        ),
+      ),
+    );
+    
+    try {
+      final success = await _apiService.removeMemberFromGroup(
+        groupId: widget.groupId,
+        userId: userId,
+      );
+      
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      if (success) {
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Member removed successfully'),
+              backgroundColor: Color(0xFF2D7A4F),
+            ),
+          );
+        }
+        
+        // Refresh members list
+        _loadMembers();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to remove member. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _showMemberMenu(BuildContext context, String memberName, int memberId, int userId, bool isAgent) {
     showModalBottomSheet(
       context: context,
@@ -628,14 +796,14 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                     _makeMemberAgent(userId);
                   },
                 ),
-              _buildMenuOption(
-                label: 'Remove',
-                onTap: () {
-                  Navigator.pop(context);
-                  // TODO: Implement remove member functionality
-                  // _removeMember(memberId, userId);
-                },
-              ),
+              if (_currentUserIsAgent)
+                _buildMenuOption(
+                  label: 'Remove',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmRemoveMember(memberName, userId);
+                  },
+                ),
             ],
           ),
         );
@@ -749,7 +917,13 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   void _showAddMemberModal(BuildContext context) {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();
+    final TextEditingController contactSearchController = TextEditingController();
     final Map<Contact, bool> selectedContacts = {};
+    _Country selectedCountry = _countries[2]; // Default to India
+    String contactSearchQuery = '';
+    
+    // Capture the parent scaffold messenger for showing SnackBars above the modal
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     
     // Load contacts if not already loaded
     if (_deviceContacts.isEmpty && !_contactsLoading) {
@@ -760,9 +934,38 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (BuildContext context) {
+      builder: (BuildContext modalContext) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalContext, setModalState) {
+            
+            // Filter contacts based on search query
+            List<Contact> filteredContacts = contactSearchQuery.isEmpty
+                ? _deviceContacts
+                : _deviceContacts.where((contact) {
+                    final name = _getContactName(contact).toLowerCase();
+                    final phone = _getContactPhone(contact)?.toLowerCase() ?? '';
+                    final query = contactSearchQuery.toLowerCase();
+                    return name.contains(query) || phone.contains(query);
+                  }).toList();
+            
+            void showCountryPicker() {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (ctx) => _CountryPickerSheet(
+                  countries: _countries,
+                  selectedCountry: selectedCountry,
+                  onSelect: (country) {
+                    setModalState(() {
+                      selectedCountry = country;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                ),
+              );
+            }
+            
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: const BoxDecoration(
@@ -801,7 +1004,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(modalContext),
                         ),
                       ],
                     ),
@@ -851,7 +1054,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          // Phone Input
+                          // Phone Input with Country Picker
                           const Text(
                             'Phone',
                             style: TextStyle(
@@ -864,30 +1067,78 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           const SizedBox(height: 8),
                           Container(
                             decoration: BoxDecoration(
-                              color: const Color(0xFF141414),
+                              color: const Color(0xFF474540),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: TextField(
-                              controller: phoneController,
-                              keyboardType: TextInputType.phone,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontFamily: 'DM Sans',
-                              ),
-                              decoration: const InputDecoration(
-                                hintText: 'Enter Phone Number',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFFA5A5A5),
-                                  fontFamily: 'DM Sans',
+                            child: Row(
+                              children: [
+                                // Country Code Picker
+                                GestureDetector(
+                                  onTap: showCountryPicker,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: Color(0xFF5A5A5A),
+                                          width: 1,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          selectedCountry.flag,
+                                          style: const TextStyle(fontSize: 16),
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          selectedCountry.dialCode,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'DM Sans',
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: Color(0xFFA5A5A5),
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
+                                // Phone Number Input
+                                Expanded(
+                                  child: TextField(
+                                    controller: phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    maxLength: selectedCountry.phoneLength,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Phone (${selectedCountry.phoneLength} digits)',
+                                      hintStyle: const TextStyle(
+                                        color: Color(0xFFA5A5A5),
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                      border: InputBorder.none,
+                                      counterText: '',
+                                      filled: true,
+                                      fillColor: Colors.transparent,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                filled: true,
-                                fillColor: Color(0xFF474540)
-                              ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -959,6 +1210,45 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                 ),
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          // Contact Search Field
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF141414),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextField(
+                              controller: contactSearchController,
+                              onChanged: (value) {
+                                setModalState(() {
+                                  contactSearchQuery = value;
+                                });
+                              },
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'DM Sans',
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: 'Search contacts...',
+                                hintStyle: TextStyle(
+                                  color: Color(0xFFA5A5A5),
+                                  fontFamily: 'DM Sans',
+                                ),
+                                prefixIcon: Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFFA5A5A5),
+                                  size: 22,
+                                ),
+                                border: InputBorder.none,
+                                filled: true,
+                                fillColor: Color(0xFF474540),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           // Contact List
                           if (_contactsLoading)
@@ -982,8 +1272,20 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             )
+                          else if (filteredContacts.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(20.0),
+                              child: Text(
+                                'No contacts match your search.',
+                                style: TextStyle(
+                                  color: Color(0xFFA5A5A5),
+                                  fontFamily: 'DM Sans',
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
                           else
-                            ..._deviceContacts.asMap().entries.map((entry) {
+                            ...filteredContacts.asMap().entries.map((entry) {
                               final index = entry.key;
                               final contact = entry.value;
                               final isSelected = selectedContacts[contact] ?? false;
@@ -1019,22 +1321,61 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           final name = nameController.text.trim();
                           final phone = phoneController.text.trim();
                           
-                          // Validate input
-                          if (name.isEmpty && phone.isEmpty && selectedContactsList.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter name and phone, or select from contacts'),
+                          // Check if manual entry is being used (either name or phone has value)
+                          final isManualEntry = name.isNotEmpty || phone.isNotEmpty;
+                          
+                          // Helper function to show error toast above modal
+                          void showErrorToast(String message) {
+                            scaffoldMessenger.showSnackBar(
+                              SnackBar(
+                                content: Text(message),
                                 backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.only(
+                                  bottom: MediaQuery.of(modalContext).size.height * 0.88,
+                                  left: 16,
+                                  right: 16,
+                                ),
                               ),
                             );
+                          }
+                          
+                          // Validate input - need either manual entry OR selected contacts
+                          if (!isManualEntry && selectedContactsList.isEmpty) {
+                            showErrorToast('Please enter name and phone, or select from contacts');
                             return;
+                          }
+                          
+                          // If manual entry, validate both name and phone are present
+                          if (isManualEntry) {
+                            if (name.isEmpty) {
+                              showErrorToast('Please enter the member\'s name');
+                              return;
+                            }
+                            
+                            if (phone.isEmpty) {
+                              showErrorToast('Please enter the member\'s phone number');
+                              return;
+                            }
+                            
+                            // Validate phone number format (should have at least 7 digits)
+                            final cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+                            if (cleanPhone.length < 7) {
+                              showErrorToast('Please enter a valid phone number (at least 7 digits)');
+                              return;
+                            }
+                            
+                            if (cleanPhone.length > 15) {
+                              showErrorToast('Phone number is too long (maximum 15 digits)');
+                              return;
+                            }
                           }
                           
                           // Show loading
                           showDialog(
-                            context: context,
+                            context: modalContext,
                             barrierDismissible: false,
-                            builder: (context) => const Center(
+                            builder: (dialogContext) => const Center(
                               child: CircularProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
                               ),
@@ -1076,13 +1417,11 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               }
                             }
                             
-                            // Handle manual entry
+                            // Handle manual entry (both name and phone are required and validated above)
                             if (name.isNotEmpty && phone.isNotEmpty) {
-                              // Format phone number
-                              String formattedPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                              if (!formattedPhone.startsWith('+')) {
-                                formattedPhone = '+$formattedPhone';
-                              }
+                              // Format phone number with selected country code
+                              String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+                              String formattedPhone = '${selectedCountry.dialCode}$cleanPhone';
                               
                               final result = await _apiService.addMemberToGroup(
                                 groupId: widget.groupId,
@@ -1095,43 +1434,27 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               } else {
                                 failCount++;
                               }
-                            } else if (phone.isNotEmpty) {
-                              // Phone only
-                              String formattedPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                              if (!formattedPhone.startsWith('+')) {
-                                formattedPhone = '+$formattedPhone';
-                              }
-                              
-                              final result = await _apiService.addMemberToGroup(
-                                groupId: widget.groupId,
-                                phone: formattedPhone,
-                                name: name.isNotEmpty ? name : 'Unknown',
-                              );
-                              
-                              if (result != null) {
-                                successCount++;
-                              } else {
-                                failCount++;
-                              }
                             }
                             
                             // Close loading dialog
-                            if (mounted) Navigator.pop(context);
+                            if (mounted) Navigator.pop(modalContext);
                             
                             if (successCount > 0) {
                               // Close add member modal
-                              if (mounted) Navigator.pop(context);
+                              if (mounted) Navigator.pop(modalContext);
                               
-                              // Show success message
+                              // Show success message (modal is closed, so normal SnackBar is fine)
                               if (mounted) {
                                 String message = 'Successfully invited $successCount member(s)';
                                 if (failCount > 0) {
                                   message += '. $failCount invitation(s) failed.';
                                 }
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text(message),
                                     backgroundColor: const Color(0xFF2D7A4F),
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: const EdgeInsets.all(16),
                                   ),
                                 );
                               }
@@ -1140,25 +1463,15 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               _loadMembers();
                             } else {
                               if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to invite member(s). Please try again.'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                showErrorToast('Failed to invite member(s). Please try again.');
                               }
                             }
                           } catch (e) {
                             // Close loading dialog
-                            if (mounted) Navigator.pop(context);
+                            if (mounted) Navigator.pop(modalContext);
                             
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: ${e.toString()}'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
+                              showErrorToast('Error: ${e.toString()}');
                             }
                           }
                         },
@@ -1275,6 +1588,205 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for selecting a country code
+class _CountryPickerSheet extends StatefulWidget {
+  final List<_Country> countries;
+  final _Country selectedCountry;
+  final ValueChanged<_Country> onSelect;
+
+  const _CountryPickerSheet({
+    required this.countries,
+    required this.selectedCountry,
+    required this.onSelect,
+  });
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  late TextEditingController _searchController;
+  late List<_Country> _filteredCountries;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _filteredCountries = widget.countries;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCountries(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCountries = widget.countries;
+      } else {
+        _filteredCountries = widget.countries
+            .where((c) =>
+                c.name.toLowerCase().contains(query.toLowerCase()) ||
+                c.dialCode.contains(query) ||
+                c.code.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.65,
+      decoration: const BoxDecoration(
+        color: Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6B7280),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              'Select Country',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFEFEEEC),
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterCountries,
+                style: const TextStyle(
+                  color: Color(0xFFEFEEEC),
+                  fontSize: 15,
+                  fontFamily: 'DM Sans',
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search country...',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFFD0CDC6),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF6B7280),
+                    size: 22,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Country list
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: _filteredCountries.length,
+              itemBuilder: (context, index) {
+                final country = _filteredCountries[index];
+                final isSelected = country.code == widget.selectedCountry.code;
+                
+                return GestureDetector(
+                  onTap: () => widget.onSelect(country),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? const Color(0xFF2D7A4F).withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          country.flag,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            country.name,
+                            style: TextStyle(
+                              color: isSelected 
+                                  ? const Color(0xFF2D7A4F) 
+                                  : const Color(0xFFEFEEEC),
+                              fontSize: 15,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        ),
+                        Text(
+                          country.dialCode,
+                          style: TextStyle(
+                            color: isSelected 
+                                ? const Color(0xFF2D7A4F) 
+                                : const Color(0xFFD0CDC6),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF2D7A4F),
+                            size: 20,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -514,108 +514,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       topRight: Radius.circular(30),
                     ),
                   ),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        // Name Field
-                        _buildInputField(
-                          icon: Icons.person,
-                          label: 'Name',
-                          controller: _nameController,
-                        ),
-                        const SizedBox(height: 20),
-                        // Email Field
-                        _buildInputField(
-                          icon: Icons.email,
-                          label: 'Email',
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 20),
-                        // Phone Field
-                        _buildInputField(
-                          icon: Icons.phone,
-                          label: 'Phone',
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 40),
-                        // Save Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isSaving || _isLoading ? null : _handleSave,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF2D7A4F),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    children: [
+                      // Scrollable Form Fields
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                          child: Column(
+                            children: [
+                              // Name Field
+                              _buildInputField(
+                                icon: Icons.person,
+                                label: 'Name',
+                                controller: _nameController,
                               ),
-                              disabledBackgroundColor: const Color(0xFF6B7280),
-                            ),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Save',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'DM Sans',
-                                    ),
-                                  ),
+                              const SizedBox(height: 20),
+                              // Email Field
+                              _buildInputField(
+                                icon: Icons.email,
+                                label: 'Email',
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              const SizedBox(height: 20),
+                              // Phone Field
+                              _buildInputField(
+                                icon: Icons.phone,
+                                label: 'Phone',
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        // Logout Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _isLoggingOut ? null : _handleLogout,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.red,
-                              elevation: 0,
-                              side: const BorderSide(
-                                color: Colors.red,
-                                width: 1.5,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      ),
+                      // Fixed Bottom Buttons
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        child: Column(
+                          children: [
+                            // Save Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed: _isSaving || _isLoading ? null : _handleSave,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2D7A4F),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  disabledBackgroundColor: const Color(0xFF6B7280),
+                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Save',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'DM Sans',
+                                        ),
+                                      ),
                               ),
                             ),
-                            child: _isLoggingOut
-                                ? const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                    ),
-                                  )
-                                : const Text(
-                                    'Logout',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'DM Sans',
-                                    ),
+                            const SizedBox(height: 12),
+                            // Logout Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 56,
+                              child: ElevatedButton(
+                                onPressed: _isLoggingOut ? null : _handleLogout,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.red,
+                                  elevation: 0,
+                                  side: const BorderSide(
+                                    color: Colors.red,
+                                    width: 1.5,
                                   ),
-                          ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isLoggingOut
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Logout',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'DM Sans',
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),

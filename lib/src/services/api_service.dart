@@ -497,6 +497,32 @@ class ApiService {
     }
   }
   
+  /// Remove a member from a group
+  Future<bool> removeMemberFromGroup({
+    required int groupId,
+    required int userId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members/$userId');
+      
+      final response = await http.delete(
+        url,
+        headers: await _getHeaders(),
+      );
+      
+      if (response.statusCode == 200) {
+        print('Member removed successfully: ${response.body}');
+        return true;
+      } else {
+        print('Failed to remove member: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('Error removing member: $e');
+      return false;
+    }
+  }
+  
   /// Get transactions for a member in a group
   Future<List<Map<String, dynamic>>> getMemberTransactions({
     required int groupId,
@@ -657,6 +683,24 @@ class ApiService {
       return [];
     } catch (e) {
       print('Error getting all draws: $e');
+      return [];
+    }
+  }
+  
+  /// Get all draws/winners for a specific group
+  Future<List<Map<String, dynamic>>> getGroupDraws(int groupId) async {
+    try {
+      final url = Uri.parse('$baseUrl/kuri-groups/$groupId/draws');
+      final response = await http.get(url, headers: await _getHeaders());
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        return data.cast<Map<String, dynamic>>();
+      }
+      print('Failed to get group draws: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      print('Error getting group draws: $e');
       return [];
     }
   }

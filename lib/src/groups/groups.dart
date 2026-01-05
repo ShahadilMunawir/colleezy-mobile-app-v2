@@ -202,7 +202,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
             child: _buildGroupCard(
               groupId: group['id'] as int,
               title: group['name'] as String? ?? 'Unnamed Group',
-              memberCount: group['member_count'] as int? ?? 0,
             ),
           );
         },
@@ -213,7 +212,6 @@ class _GroupsScreenState extends State<GroupsScreen> {
   Widget _buildGroupCard({
     required int groupId,
     required String title,
-    required int memberCount,
   }) {
     return InkWell(
       onTap: () {
@@ -234,27 +232,13 @@ class _GroupsScreenState extends State<GroupsScreen> {
           color: const Color(0xFF232220),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFFF2F2F2),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '$memberCount ${memberCount == 1 ? 'member' : 'members'}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFFC1BDB3),
-              ),
-            ),
-          ],
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFFF2F2F2),
+          ),
         ),
       ),
     );

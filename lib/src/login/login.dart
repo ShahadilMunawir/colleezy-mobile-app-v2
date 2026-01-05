@@ -5,6 +5,56 @@ import '../services/api_service.dart';
 import '../profile/profile_screen.dart';
 import 'otp_verification_screen.dart';
 
+/// Minimal country data for the country code picker
+class Country {
+  final String name;
+  final String code;
+  final String dialCode;
+  final String flag;
+  final int phoneLength; // Expected phone number length (without country code)
+
+  const Country({
+    required this.name,
+    required this.code,
+    required this.dialCode,
+    required this.flag,
+    required this.phoneLength,
+  });
+}
+
+const List<Country> _countries = [
+  Country(name: 'United States', code: 'US', dialCode: '+1', flag: '🇺🇸', phoneLength: 10),
+  Country(name: 'United Kingdom', code: 'GB', dialCode: '+44', flag: '🇬🇧', phoneLength: 10),
+  Country(name: 'India', code: 'IN', dialCode: '+91', flag: '🇮🇳', phoneLength: 10),
+  Country(name: 'Canada', code: 'CA', dialCode: '+1', flag: '🇨🇦', phoneLength: 10),
+  Country(name: 'Australia', code: 'AU', dialCode: '+61', flag: '🇦🇺', phoneLength: 9),
+  Country(name: 'Germany', code: 'DE', dialCode: '+49', flag: '🇩🇪', phoneLength: 11),
+  Country(name: 'France', code: 'FR', dialCode: '+33', flag: '🇫🇷', phoneLength: 9),
+  Country(name: 'Japan', code: 'JP', dialCode: '+81', flag: '🇯🇵', phoneLength: 10),
+  Country(name: 'China', code: 'CN', dialCode: '+86', flag: '🇨🇳', phoneLength: 11),
+  Country(name: 'Brazil', code: 'BR', dialCode: '+55', flag: '🇧🇷', phoneLength: 11),
+  Country(name: 'Mexico', code: 'MX', dialCode: '+52', flag: '🇲🇽', phoneLength: 10),
+  Country(name: 'South Korea', code: 'KR', dialCode: '+82', flag: '🇰🇷', phoneLength: 10),
+  Country(name: 'Italy', code: 'IT', dialCode: '+39', flag: '🇮🇹', phoneLength: 10),
+  Country(name: 'Spain', code: 'ES', dialCode: '+34', flag: '🇪🇸', phoneLength: 9),
+  Country(name: 'Netherlands', code: 'NL', dialCode: '+31', flag: '🇳🇱', phoneLength: 9),
+  Country(name: 'Singapore', code: 'SG', dialCode: '+65', flag: '🇸🇬', phoneLength: 8),
+  Country(name: 'UAE', code: 'AE', dialCode: '+971', flag: '🇦🇪', phoneLength: 9),
+  Country(name: 'Saudi Arabia', code: 'SA', dialCode: '+966', flag: '🇸🇦', phoneLength: 9),
+  Country(name: 'South Africa', code: 'ZA', dialCode: '+27', flag: '🇿🇦', phoneLength: 9),
+  Country(name: 'Nigeria', code: 'NG', dialCode: '+234', flag: '🇳🇬', phoneLength: 10),
+  Country(name: 'Pakistan', code: 'PK', dialCode: '+92', flag: '🇵🇰', phoneLength: 10),
+  Country(name: 'Bangladesh', code: 'BD', dialCode: '+880', flag: '🇧🇩', phoneLength: 10),
+  Country(name: 'Indonesia', code: 'ID', dialCode: '+62', flag: '🇮🇩', phoneLength: 11),
+  Country(name: 'Philippines', code: 'PH', dialCode: '+63', flag: '🇵🇭', phoneLength: 10),
+  Country(name: 'Vietnam', code: 'VN', dialCode: '+84', flag: '🇻🇳', phoneLength: 9),
+  Country(name: 'Thailand', code: 'TH', dialCode: '+66', flag: '🇹🇭', phoneLength: 9),
+  Country(name: 'Malaysia', code: 'MY', dialCode: '+60', flag: '🇲🇾', phoneLength: 10),
+  Country(name: 'Russia', code: 'RU', dialCode: '+7', flag: '🇷🇺', phoneLength: 10),
+  Country(name: 'Turkey', code: 'TR', dialCode: '+90', flag: '🇹🇷', phoneLength: 10),
+  Country(name: 'Egypt', code: 'EG', dialCode: '+20', flag: '🇪🇬', phoneLength: 10),
+];
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final ApiService _apiService = ApiService();
   bool _isLoading = false;
   String? _verificationId;
+  Country _selectedCountry = _countries[2]; // Default to India
 
   void _showErrorToast(String message) {
     if (mounted) {
@@ -99,18 +150,42 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showCountryPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _CountryPickerSheet(
+        countries: _countries,
+        selectedCountry: _selectedCountry,
+        onSelect: (country) {
+          setState(() {
+            _selectedCountry = country;
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   Future<void> _handlePhoneSignIn() async {
-    final phoneNumber = _phoneController.text.trim();
+    final phoneNumber = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
 
     if (phoneNumber.isEmpty) {
       _showErrorToast('Please enter your phone number');
       return;
     }
 
-    String formattedPhone = phoneNumber;
-    if (!formattedPhone.startsWith('+')) {
-      formattedPhone = '+$formattedPhone';
+    // Validate phone number length based on selected country
+    if (phoneNumber.length != _selectedCountry.phoneLength) {
+      _showErrorToast(
+        'Phone number must be ${_selectedCountry.phoneLength} digits for ${_selectedCountry.name}',
+      );
+      return;
     }
+
+    // Combine country code with phone number
+    String formattedPhone = '${_selectedCountry.dialCode}$phoneNumber';
 
     setState(() {
       _isLoading = true;
@@ -261,49 +336,85 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 20),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFF141414),
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
-                      child: TextField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: InputDecoration(
-                          hintText: 'Phone Number (e.g., +1234567890)',
-                          hintStyle: const TextStyle(
-                            color: Color(0xFFD0CDC6),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          prefixIcon: Padding(
-                            padding: const EdgeInsets.only(top: 12.0, left: 12.0, bottom: 12.0),
-                            child: SvgPicture.asset(
-                              'assets/svg/phone.svg',
-                              width: 22,
-                              height: 22,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFF187A3F),
-                                BlendMode.srcIn,
+                      child: Row(
+                        children: [
+                          // Country Code Picker
+                          GestureDetector(
+                            onTap: _showCountryPicker,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(
+                                    color: Color(0xFF2A2A2A),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedCountry.flag,
+                                    style: const TextStyle(fontSize: 18),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _selectedCountry.dialCode,
+                                    style: const TextStyle(
+                                      color: Color(0xFFEFEEEC),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFF6B7280),
+                                    size: 18,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                          // Phone Number Input
+                          Expanded(
+                            child: TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              maxLength: _selectedCountry.phoneLength,
+                              style: const TextStyle(
+                                color: Color(0xFFEFEEEC),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w400,
+                                fontFamily: 'DM Sans',
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Phone Number (${_selectedCountry.phoneLength} digits)',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFFD0CDC6),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                counterText: '', // Hide the character counter
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 18,
+                                ),
+                              ),
+                            ),
                           ),
-                          filled: true,
-                          fillColor: Color(0xFF141414),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 18,
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -434,6 +545,205 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for selecting a country code
+class _CountryPickerSheet extends StatefulWidget {
+  final List<Country> countries;
+  final Country selectedCountry;
+  final ValueChanged<Country> onSelect;
+
+  const _CountryPickerSheet({
+    required this.countries,
+    required this.selectedCountry,
+    required this.onSelect,
+  });
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  late TextEditingController _searchController;
+  late List<Country> _filteredCountries;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _filteredCountries = widget.countries;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCountries(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCountries = widget.countries;
+      } else {
+        _filteredCountries = widget.countries
+            .where((c) =>
+                c.name.toLowerCase().contains(query.toLowerCase()) ||
+                c.dialCode.contains(query) ||
+                c.code.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.65,
+      decoration: const BoxDecoration(
+        color: Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6B7280),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text(
+              'Select Country',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFEFEEEC),
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterCountries,
+                style: const TextStyle(
+                  color: Color(0xFFEFEEEC),
+                  fontSize: 15,
+                  fontFamily: 'DM Sans',
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search country...',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFFD0CDC6),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF6B7280),
+                    size: 22,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Country list
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: _filteredCountries.length,
+              itemBuilder: (context, index) {
+                final country = _filteredCountries[index];
+                final isSelected = country.code == widget.selectedCountry.code;
+                
+                return GestureDetector(
+                  onTap: () => widget.onSelect(country),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? const Color(0xFF2D7A4F).withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          country.flag,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            country.name,
+                            style: TextStyle(
+                              color: isSelected 
+                                  ? const Color(0xFF2D7A4F) 
+                                  : const Color(0xFFEFEEEC),
+                              fontSize: 15,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        ),
+                        Text(
+                          country.dialCode,
+                          style: TextStyle(
+                            color: isSelected 
+                                ? const Color(0xFF2D7A4F) 
+                                : const Color(0xFFD0CDC6),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF2D7A4F),
+                            size: 20,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

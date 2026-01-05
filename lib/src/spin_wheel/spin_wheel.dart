@@ -21,6 +21,8 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   double _rotationAngle = 0.0;
   List<Map<String, dynamic>> _groups = [];
   List<Map<String, dynamic>> _members = [];
+  int _totalMemberCount = 0;  // Total members including winners
+  int _previousWinnerCount = 0;  // Number of previous winners
   bool _isLoadingGroups = true;
   bool _isLoadingMembers = false;
 
@@ -75,15 +77,28 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     });
 
     try {
-      final members = await _apiService.getGroupMembers(groupId);
+      // Get all members and previous draws for this group
+      final allMembers = await _apiService.getGroupMembers(groupId);
+      final draws = await _apiService.getGroupDraws(groupId);
       
-      // Create wheel values based on member count
+      // Get set of winner user IDs to exclude
+      final winnerUserIds = draws
+          .map((draw) => draw['winner_user_id'] as int?)
+          .where((id) => id != null)
+          .toSet();
+      
+      // Filter out members who have already won
+      final eligibleMembers = allMembers
+          .where((member) => !winnerUserIds.contains(member['user_id'] as int?))
+          .toList();
+      
+      // Create wheel values based on eligible member count
       // Always create 12 segments for the wheel
-      final memberCount = members.length;
+      final memberCount = eligibleMembers.length;
       List<int> wheelValues = [];
       
       if (memberCount == 0) {
-        // No members - show placeholder numbers
+        // No eligible members - show placeholder numbers
         wheelValues = List.generate(12, (index) => index);
       } else if (memberCount <= 12) {
         // Use member indices directly, repeat if needed to fill 12 segments
@@ -100,8 +115,10 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       
       if (mounted) {
         setState(() {
-          _members = members;
+          _members = eligibleMembers;
           _wheelValues = wheelValues;
+          _totalMemberCount = allMembers.length;
+          _previousWinnerCount = winnerUserIds.length;
           _isLoadingMembers = false;
         });
       }
@@ -186,6 +203,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
 
     final winner = _members[winnerIndex];
     final winnerUserId = winner['user_id'] as int;
+    final winnerMemberNumber = winner['member_number'] as int? ?? (winnerIndex + 1);
     final winnerName = winner['user_name'] as String? ?? 
                       (winner['user_email'] as String? ?? 'Unknown');
     
@@ -261,7 +279,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                   ),
                   child: Center(
                     child: Text(
-                      displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                      '$winnerMemberNumber',
                       style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w700,
@@ -273,7 +291,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  displayName,
+                  '#$winnerMemberNumber - $displayName',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -332,6 +350,13 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
           const SnackBar(
             content: Text('Please select a group first'),
             backgroundColor: Colors.red,
+          ),
+        );
+      } else if (_members.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All members have already won! No eligible members left.'),
+            backgroundColor: Colors.orange,
           ),
         );
       }
@@ -508,6 +533,40 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                     ),
                   ),
                 ),
+                // Show eligible members info
+                if (_selectedGroupId != null && !_isLoadingMembers)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF141414),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _members.isEmpty ? Icons.warning_amber_rounded : Icons.people,
+                            color: _members.isEmpty ? Colors.orange : const Color(0xFF2D7A4F),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _members.isEmpty
+                                ? 'All $_totalMemberCount members have already won!'
+                                : '${_members.length} eligible • $_previousWinnerCount won',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: _members.isEmpty ? Colors.orange : const Color(0xFFD0CDC6),
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 32),
                 // Spin the Wheel Title
                 const Text(
@@ -521,51 +580,47 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                 const SizedBox(height: 40),
                 // Wheel Container
                 Expanded(
-                  child: Center(
-                    child: SizedBox(
-                      width: 320,
-                      height: 320,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Wheel
-                          AnimatedBuilder(
-                            animation: _rotationAnimation,
-                            builder: (context, child) {
-                              return Transform.rotate(
-                                angle: _rotationAnimation.value,
-                                child: CustomPaint(
-                                  size: const Size(320, 320),
-                                  painter: WheelPainter(
-                                    values: _wheelValues,
-                                    members: _members,
-                                    lightGreen: _lightGreen,
-                                    darkGreen: _darkGreen,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 320,
+                        height: 320,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Wheel
+                            AnimatedBuilder(
+                              animation: _rotationAnimation,
+                              builder: (context, child) {
+                                return Transform.rotate(
+                                  angle: _rotationAnimation.value,
+                                  child: CustomPaint(
+                                    size: const Size(320, 320),
+                                    painter: WheelPainter(
+                                      values: _wheelValues,
+                                      members: _members,
+                                      lightGreen: _lightGreen,
+                                      darkGreen: _darkGreen,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                          // Pointer at top
-                          Positioned(
-                            top: 0,
-                            child: CustomPaint(
-                              size: const Size(40, 30),
-                              painter: PointerPainter(),
+                                );
+                              },
                             ),
-                          ),
-                          // Spin button in center
-                          GestureDetector(
-                            onTap: _isSpinning || _selectedGroupId == null || _members.isEmpty
-                                ? null
-                                : _spinWheel,
-                            child: Container(
+                            // Pointer at top
+                            Positioned(
+                              top: 0,
+                              child: CustomPaint(
+                                size: const Size(40, 30),
+                                painter: PointerPainter(),
+                              ),
+                            ),
+                            // Center decoration (no longer a button)
+                            Container(
                               width: 60,
                               height: 60,
                               decoration: BoxDecoration(
-                                color: _isSpinning || _selectedGroupId == null || _members.isEmpty
-                                    ? const Color(0xFF6B7280)
-                                    : const Color(0xFF374151),
+                                color: const Color(0xFF374151),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
@@ -575,28 +630,58 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                   ),
                                 ],
                               ),
-                              child: _isSpinning
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(
+                              child: const Icon(
                                 Icons.star,
                                 color: Colors.white,
                                 size: 28,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 32),
+                      // Spin Button
+                      SizedBox(
+                        width: 200,
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: _isSpinning || _selectedGroupId == null || _members.isEmpty
+                              ? null
+                              : _spinWheel,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2D7A4F),
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: const Color(0xFF6B7280),
+                            disabledForegroundColor: Colors.white54,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 4,
+                          ),
+                          child: _isSpinning
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'SPIN',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'DM Sans',
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 100), // Space for bottom nav bar
+                const SizedBox(height: 40), // Space for bottom nav bar
               ],
             ),
           ),
@@ -668,36 +753,18 @@ class WheelPainter extends CustomPainter {
           ..style = PaintingStyle.stroke,
       );
 
-      // Draw text
+      // Draw text - show member number
       final textAngle = startAngle + segmentAngle / 2;
       final textRadius = radius * 0.7;
       final textX = center.dx + textRadius * math.cos(textAngle);
       final textY = center.dy + textRadius * math.sin(textAngle);
 
-      // Get member name or index
+      // Get member number (from API) or fallback to index + 1
       String displayText;
       if (members.isNotEmpty && values[i] < members.length) {
         final member = members[values[i]];
-        final name = member['user_name'] as String? ?? 
-                    (member['user_email'] as String? ?? 'Member ${values[i] + 1}');
-        // Extract first name or first part of email
-        if (name.contains('@')) {
-          final emailParts = name.split('@');
-          if (emailParts.isNotEmpty) {
-            displayText = emailParts[0].split('.').first;
-            if (displayText.length > 6) {
-              displayText = displayText.substring(0, 6);
-            }
-          } else {
-            displayText = 'M${values[i] + 1}';
-          }
-        } else {
-          final nameParts = name.split(' ');
-          displayText = nameParts.isNotEmpty ? nameParts[0] : 'M${values[i] + 1}';
-          if (displayText.length > 6) {
-            displayText = displayText.substring(0, 6);
-          }
-        }
+        final memberNumber = member['member_number'] as int? ?? (values[i] + 1);
+        displayText = '$memberNumber';
       } else {
         // No members or invalid index - show number
         displayText = '${values[i] + 1}';
@@ -707,7 +774,7 @@ class WheelPainter extends CustomPainter {
         text: TextSpan(
           text: displayText,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Color(0xFF1F2937),
             fontFamily: 'DM Sans',

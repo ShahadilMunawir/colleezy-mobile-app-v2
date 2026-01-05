@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../services/api_service.dart';
+import 'group_details.dart';
 
 class CreateGroupScreen extends StatefulWidget {
   const CreateGroupScreen({super.key});
@@ -16,7 +17,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _totalAmountController = TextEditingController();
   final _individualPaymentController = TextEditingController();
   final _durationController = TextEditingController();
-  final _amountPerPeriodController = TextEditingController(text: '0.00');
+  final _amountPerPeriodController = TextEditingController();
   final _percentageController = TextEditingController();
   final _cashCommissionController = TextEditingController();
   String _collectPeriod = 'Monthly';
@@ -36,6 +37,137 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     _percentageController.dispose();
     _cashCommissionController.dispose();
     super.dispose();
+  }
+
+  // ==================== VALIDATORS ====================
+
+  String? _validateGroupName(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Group name is required';
+    }
+    if (value.trim().length < 3) {
+      return 'Group name must be at least 3 characters';
+    }
+    if (value.trim().length > 50) {
+      return 'Group name must be less than 50 characters';
+    }
+    return null;
+  }
+
+  String? _validateTotalAmount(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Total amount is required';
+    }
+    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
+    if (amount == null) {
+      return 'Please enter a valid amount';
+    }
+    if (amount <= 0) {
+      return 'Amount must be greater than 0';
+    }
+    if (amount > 1000000) {
+      return 'Amount cannot exceed \$1,000,000';
+    }
+    return null;
+  }
+
+  String? _validateIndividualPayment(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Individual payment is required';
+    }
+    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
+    if (amount == null) {
+      return 'Please enter a valid amount';
+    }
+    if (amount <= 0) {
+      return 'Payment must be greater than 0';
+    }
+    // Check against total amount if set
+    final totalText = _totalAmountController.text;
+    if (totalText.isNotEmpty) {
+      final totalAmount = double.tryParse(totalText.replaceAll(RegExp(r'[^\d.]'), ''));
+      if (totalAmount != null && amount > totalAmount) {
+        return 'Cannot exceed total amount';
+      }
+    }
+    return null;
+  }
+
+  String? _validateDuration(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Duration is required';
+    }
+    final duration = int.tryParse(value.trim());
+    if (duration == null) {
+      return 'Please enter a valid number';
+    }
+    if (duration <= 0) {
+      return 'Duration must be at least 1';
+    }
+    if (duration > 120) {
+      return 'Duration cannot exceed 120 periods';
+    }
+    return null;
+  }
+
+  String? _validateAmountPerPeriod(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Amount per period is required';
+    }
+    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
+    if (amount == null) {
+      return 'Please enter a valid amount';
+    }
+    if (amount < 0) {
+      return 'Amount cannot be negative';
+    }
+    return null;
+  }
+
+  String? _validatePercentage(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Percentage is required';
+    }
+    final percentage = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
+    if (percentage == null) {
+      return 'Please enter a valid percentage';
+    }
+    if (percentage <= 0) {
+      return 'Percentage must be greater than 0';
+    }
+    if (percentage > 100) {
+      return 'Percentage cannot exceed 100%';
+    }
+    return null;
+  }
+
+  String? _validateCashCommission(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Commission amount is required';
+    }
+    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
+    if (amount == null) {
+      return 'Please enter a valid amount';
+    }
+    if (amount <= 0) {
+      return 'Amount must be greater than 0';
+    }
+    // Check against total amount if set
+    final totalText = _totalAmountController.text;
+    if (totalText.isNotEmpty) {
+      final totalAmount = double.tryParse(totalText.replaceAll(RegExp(r'[^\d.]'), ''));
+      if (totalAmount != null && amount >= totalAmount) {
+        return 'Must be less than total amount';
+      }
+    }
+    return null;
+  }
+
+  String? _validateStartingDate() {
+    if (_startingDateController.text.trim().isEmpty) {
+      return 'Starting date is required';
+    }
+    return null;
   }
 
   @override
@@ -101,6 +233,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   controller: _groupNameController,
                   placeholder: 'Group Name',
+                  validator: _validateGroupName,
                 ),
                 const SizedBox(height: 24),
                 // Starting Date
@@ -115,6 +248,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   controller: _totalAmountController,
                   placeholder: 'Total Amount (eg: \$10.00)',
                   keyboardType: TextInputType.number,
+                  validator: _validateTotalAmount,
                 ),
                 const SizedBox(height: 24),
                 // Individual Payment
@@ -124,6 +258,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   controller: _individualPaymentController,
                   placeholder: 'Individual payment',
                   keyboardType: TextInputType.number,
+                  validator: _validateIndividualPayment,
                 ),
                 const SizedBox(height: 24),
                 // Duration
@@ -131,8 +266,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 const SizedBox(height: 8),
                 _buildTextField(
                   controller: _durationController,
-                  placeholder: 'Duration',
+                  placeholder: 'Duration (number of periods)',
                   keyboardType: TextInputType.number,
+                  validator: _validateDuration,
                 ),
                 const SizedBox(height: 24),
                 // Amount Per Period
@@ -140,8 +276,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 const SizedBox(height: 8),
                 _buildTextField(
                   controller: _amountPerPeriodController,
-                  placeholder: '0.00',
+                  placeholder: 'Enter amount per period',
                   keyboardType: TextInputType.number,
+                  validator: _validateAmountPerPeriod,
                 ),
                 const SizedBox(height: 24),
                 // Collect Period
@@ -186,146 +323,197 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     required TextEditingController controller,
     required String placeholder,
     TextInputType? keyboardType,
+    String? Function(String?)? validator,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A),
-        borderRadius: BorderRadius.circular(12),
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: Color(0xFFE0DED9),
+        fontFamily: 'DM Sans',
       ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: const TextStyle(
+      decoration: InputDecoration(
+        hintText: placeholder,
+        hintStyle: const TextStyle(
+          color: AppColors.textTertiary,
           fontSize: 15,
           fontWeight: FontWeight.w400,
-          color: AppColors.textTertiary,
           fontFamily: 'DM Sans',
         ),
-        decoration: InputDecoration(
-          hintText: placeholder,
-          hintStyle: const TextStyle(
-            color: AppColors.textTertiary,
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            fontFamily: 'DM Sans',
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Color(0xFF141414),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2D7A4F), width: 1),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        errorStyle: const TextStyle(
+          color: Colors.red,
+          fontSize: 12,
+          fontFamily: 'DM Sans',
+        ),
+        filled: true,
+        fillColor: const Color(0xFF141414),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
         ),
       ),
     );
   }
 
   Widget _buildDateField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+    return TextFormField(
+      controller: _startingDateController,
+      readOnly: true,
+      validator: (value) => _validateStartingDate(),
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: Color(0xFFE0DED9),
+        fontFamily: 'DM Sans',
       ),
-      child: TextFormField(
-        controller: _startingDateController,
-        readOnly: true,
-        style: const TextStyle(
+      decoration: InputDecoration(
+        hintText: 'mm/dd/yyyy',
+        hintStyle: const TextStyle(
+          color: AppColors.textTertiary,
           fontSize: 15,
           fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
           fontFamily: 'DM Sans',
         ),
-        decoration: InputDecoration(
-          hintText: 'mm/dd/yyyy',
-          hintStyle: const TextStyle(
-            color: AppColors.textTertiary,
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            fontFamily: 'DM Sans',
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Color(0xFF141414),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          suffixIcon: const Icon(
-            Icons.calendar_today,
-            color: AppColors.textTertiary,
-            size: 20,
-          ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        onTap: () async {
-          final DateTime? picked = await showDatePicker(
-            context: context,
-            initialDate: DateTime.now(),
-            firstDate: DateTime.now(),
-            lastDate: DateTime(2100),
-          );
-          if (picked != null) {
-            setState(() {
-              _startingDateController.text =
-                  '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
-            });
-          }
-        },
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2D7A4F), width: 1),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        errorStyle: const TextStyle(
+          color: Colors.red,
+          fontSize: 12,
+          fontFamily: 'DM Sans',
+        ),
+        filled: true,
+        fillColor: const Color(0xFF141414),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        suffixIcon: const Icon(
+          Icons.calendar_today,
+          color: AppColors.textTertiary,
+          size: 20,
+        ),
       ),
+      onTap: () async {
+        final DateTime? picked = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime(2100),
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.dark(
+                  primary: Color(0xFF2D7A4F),
+                  onPrimary: Colors.white,
+                  surface: Color(0xFF2A2A2A),
+                  onSurface: Color(0xFFE0DED9),
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          setState(() {
+            _startingDateController.text =
+                '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
+          });
+        }
+      },
     );
   }
 
   Widget _buildDropdownField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: DropdownButtonFormField<String>(
-        value: _collectPeriod,
-        decoration: InputDecoration(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          filled: true,
-          fillColor: Color(0xFF141414),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          suffixIcon: const Icon(
-            Icons.keyboard_arrow_down,
-            color: AppColors.textTertiary,
-            size: 24,
-          ),
+    return DropdownButtonFormField<String>(
+      value: _collectPeriod,
+      dropdownColor: const Color(0xFF2A2A2A),
+      decoration: InputDecoration(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textPrimary,
-          fontFamily: 'DM Sans',
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
-        items: ['Monthly', 'Weekly', 'Daily'].map((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value),
-          );
-        }).toList(),
-        onChanged: (String? newValue) {
-          if (newValue != null) {
-            setState(() {
-              _collectPeriod = newValue;
-            });
-          }
-        },
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2D7A4F), width: 1),
+        ),
+        filled: true,
+        fillColor: const Color(0xFF141414),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
       ),
+      icon: const Icon(
+        Icons.keyboard_arrow_down,
+        color: AppColors.textTertiary,
+        size: 24,
+      ),
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+        color: Color(0xFFE0DED9),
+        fontFamily: 'DM Sans',
+      ),
+      items: ['Monthly', 'Weekly', 'Daily'].map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          setState(() {
+            _collectPeriod = newValue;
+          });
+        }
+      },
     );
   }
 
@@ -493,106 +681,140 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         const SizedBox(height: 16),
         // Input field based on commission type
         if (_commissionType == 'percentage')
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF141414),
-              borderRadius: BorderRadius.circular(12),
+          TextFormField(
+            controller: _percentageController,
+            keyboardType: TextInputType.number,
+            validator: _validatePercentage,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFFE0DED9),
+              fontFamily: 'DM Sans',
             ),
-            child: TextFormField(
-              controller: _percentageController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(
+            decoration: InputDecoration(
+              hintText: 'Enter percentage (1-100)',
+              hintStyle: const TextStyle(
+                color: Color(0xFFA5A5A5),
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
-                color: Color(0xFFE0DED9),
                 fontFamily: 'DM Sans',
               ),
-              decoration: InputDecoration(
-                hintText: 'Enter percentage',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFA5A5A5),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'DM Sans',
-                ),
-                prefixIcon: const Padding(
-                  padding: EdgeInsets.only(left: 16, right: 8),
-                  child: Text(
-                    '%',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFFE0DED9),
-                      fontFamily: 'DM Sans',
-                    ),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 16, right: 8),
+                child: Text(
+                  '%',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFFE0DED9),
+                    fontFamily: 'DM Sans',
                   ),
                 ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 0,
-                  minHeight: 0,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: const Color(0xFF141414),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2D7A4F), width: 1),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              errorStyle: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+                fontFamily: 'DM Sans',
+              ),
+              filled: true,
+              fillColor: const Color(0xFF141414),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
               ),
             ),
           )
         else
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF141414),
-              borderRadius: BorderRadius.circular(12),
+          TextFormField(
+            controller: _cashCommissionController,
+            keyboardType: TextInputType.number,
+            validator: _validateCashCommission,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFFE0DED9),
+              fontFamily: 'DM Sans',
             ),
-            child: TextFormField(
-              controller: _cashCommissionController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(
+            decoration: InputDecoration(
+              hintText: 'Enter amount (e.g., 10.00)',
+              hintStyle: const TextStyle(
+                color: Color(0xFFA5A5A5),
                 fontSize: 15,
                 fontWeight: FontWeight.w400,
-                color: Color(0xFFE0DED9),
                 fontFamily: 'DM Sans',
               ),
-              decoration: InputDecoration(
-                hintText: 'Enter amount (e.g., \$10.00)',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFA5A5A5),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'DM Sans',
-                ),
-                prefixIcon: const Padding(
-                  padding: EdgeInsets.only(left: 16, right: 8),
-                  child: Text(
-                    '\$',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFFE0DED9),
-                      fontFamily: 'DM Sans',
-                    ),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 16, right: 8),
+                child: Text(
+                  '\$',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: Color(0xFFE0DED9),
+                    fontFamily: 'DM Sans',
                   ),
                 ),
-                prefixIconConstraints: const BoxConstraints(
-                  minWidth: 0,
-                  minHeight: 0,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: const Color(0xFF141414),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
+              ),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF2D7A4F), width: 1),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.red, width: 1),
+              ),
+              errorStyle: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+                fontFamily: 'DM Sans',
+              ),
+              filled: true,
+              fillColor: const Color(0xFF141414),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
               ),
             ),
           ),
@@ -601,34 +823,27 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   }
 
   Future<void> _handleSave() async {
+    // Validate form fields
     if (!_formKey.currentState!.validate()) {
+      _showError('Please fix the errors above');
       return;
     }
 
-    // Validate required fields
-    if (_groupNameController.text.trim().isEmpty) {
-      _showError('Please enter a group name');
-      return;
-    }
-
-    if (_startingDateController.text.trim().isEmpty) {
-      _showError('Please select a starting date');
-      return;
-    }
-
-    if (_totalAmountController.text.trim().isEmpty) {
-      _showError('Please enter total amount');
-      return;
-    }
-
-    if (_durationController.text.trim().isEmpty) {
-      _showError('Please enter duration');
-      return;
-    }
-
-    if (_amountPerPeriodController.text.trim().isEmpty) {
-      _showError('Please enter amount per period');
-      return;
+    // Additional validation for commission fields (only when commission is enabled)
+    if (_commissionYes) {
+      if (_commissionType == 'percentage') {
+        final percentageError = _validatePercentage(_percentageController.text);
+        if (percentageError != null) {
+          _showError(percentageError);
+          return;
+        }
+      } else if (_commissionType == 'cash') {
+        final cashError = _validateCashCommission(_cashCommissionController.text);
+        if (cashError != null) {
+          _showError(cashError);
+          return;
+        }
+      }
     }
 
     setState(() {
@@ -649,50 +864,6 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
       // Parse numeric values
       final totalAmount = double.tryParse(_totalAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
-      
-      // Validate commission fields if commission is enabled
-      if (_commissionYes) {
-        if (_commissionType == 'percentage') {
-          if (_percentageController.text.trim().isEmpty) {
-            _showError('Please enter commission percentage');
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-          final percentage = double.tryParse(_percentageController.text.trim().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
-          if (percentage <= 0 || percentage > 100) {
-            _showError('Commission percentage must be between 0 and 100');
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-        } else if (_commissionType == 'cash') {
-          if (_cashCommissionController.text.trim().isEmpty) {
-            _showError('Please enter commission amount');
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-          final cashAmount = double.tryParse(_cashCommissionController.text.trim().replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
-          if (cashAmount <= 0) {
-            _showError('Commission amount must be greater than 0');
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-          if (cashAmount >= totalAmount) {
-            _showError('Commission amount must be less than total amount');
-            setState(() {
-              _isLoading = false;
-            });
-            return;
-          }
-        }
-      }
       final duration = int.tryParse(_durationController.text) ?? 0;
       final amountPerPeriod = double.tryParse(_amountPerPeriodController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
 
@@ -738,13 +909,32 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       );
 
       if (result != null && mounted) {
-        Navigator.of(context).pop(true); // Return true to indicate success
+        // Extract group ID and name from the result
+        final groupId = result['id'] as int?;
+        final groupName = result['name'] as String? ?? _groupNameController.text.trim();
+        
+        // Close the create group bottom sheet
+        Navigator.of(context).pop(true);
+        
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Group created successfully!'),
             backgroundColor: Color(0xFF2D7A4F),
           ),
         );
+        
+        // Navigate to the newly created group's detail page
+        if (groupId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => GroupDetailsScreen(
+                groupId: groupId,
+                groupName: groupName,
+              ),
+            ),
+          );
+        }
       } else {
         if (mounted) {
           _showError('Failed to create group. Please try again.');

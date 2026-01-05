@@ -173,27 +173,14 @@ class _WinnersScreenState extends State<WinnersScreen> {
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const Expanded(
-                      child: Text(
-                        'Winners',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFEFEEEC),
-                          fontFamily: 'DM Sans',
-                        ),
+                    const Text(
+                      'Winners',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFEFEEEC),
+                        fontFamily: 'DM Sans',
                       ),
-                    ),
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      onPressed: () {
-                        // Handle menu action
-                      },
                     ),
                   ],
                 ),
