@@ -179,28 +179,6 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                         ],
                       ),
                     ),
-                    // Edit icon
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: SvgPicture.asset(
-                        'assets/svg/add.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              groupName: widget.memberName,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),

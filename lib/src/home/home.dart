@@ -7,6 +7,7 @@ import '../winners/winners_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../notifications/notifications_screen.dart';
+import '../support/support_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateToGroups;
@@ -634,6 +635,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   svgPath: 'assets/svg/support.svg',
                                   label: 'Support',
                                   color: const Color(0xFF2D7A4F),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const SupportScreen(),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

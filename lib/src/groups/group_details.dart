@@ -1189,46 +1189,31 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                   hint: const Padding(
                                     padding: EdgeInsets.symmetric(horizontal: 16),
                                     child: Text(
-                                      'Select an agent (optional)',
+                                      'Select an agent',
                                       style: TextStyle(
                                         color: Color(0xFFA5A5A5),
                                         fontFamily: 'DM Sans',
                                       ),
                                     ),
                                   ),
-                                  items: [
-                                    const DropdownMenuItem<int?>(
-                                      value: null,
+                                  items: agents.map((agent) {
+                                    final agentUserId = agent['user_id'] as int;
+                                    final agentName = agent['user_name'] as String? ?? 
+                                                      _extractNameFromEmail(agent['user_email'] as String? ?? 'Unknown');
+                                    return DropdownMenuItem<int?>(
+                                      value: agentUserId,
                                       child: Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 16),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
                                         child: Text(
-                                          'No agent',
-                                          style: TextStyle(
-                                            color: Color(0xFFA5A5A5),
+                                          agentName,
+                                          style: const TextStyle(
+                                            color: Colors.white,
                                             fontFamily: 'DM Sans',
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    ...agents.map((agent) {
-                                      final agentUserId = agent['user_id'] as int;
-                                      final agentName = agent['user_name'] as String? ?? 
-                                                        _extractNameFromEmail(agent['user_email'] as String? ?? 'Unknown');
-                                      return DropdownMenuItem<int?>(
-                                        value: agentUserId,
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                                          child: Text(
-                                            agentName,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'DM Sans',
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
-                                  ],
+                                    );
+                                  }).toList(),
                                   onChanged: (value) {
                                     setModalState(() {
                                       selectedAgentId = value;
@@ -1238,6 +1223,38 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
+                          ] else ...[
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              margin: const EdgeInsets.only(bottom: 24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2D7A4F).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFF2D7A4F).withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline_rounded,
+                                    color: Color(0xFF2D7A4F),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: const Text(
+                                      'This will be the first member. They will be automatically promoted to an agent.',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                           // Separator with "Or"
                           Row(
@@ -1440,6 +1457,12 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           // Validate input - need either manual entry OR selected contacts
                           if (!isManualEntry && selectedContactsList.isEmpty) {
                             showErrorToast('Please enter name and phone, or select from contacts');
+                            return;
+                          }
+                          
+                          // Validate agent selection if agents exist
+                          if (agents.isNotEmpty && selectedAgentId == null) {
+                            showErrorToast('Please select an agent to assign this member to');
                             return;
                           }
                           
@@ -2039,7 +2062,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           return;
                         }
                         
-                        if (nameController.text.trim().isEmpty && !selectedContactsList.isEmpty) {
+                        if (nameController.text.trim().isEmpty && phoneController.text.trim().isNotEmpty) {
                           showErrorToast('Name is required when adding by phone');
                           return;
                         }
@@ -2087,8 +2110,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             final contactName = _getContactName(contact);
                             
                             if (contactPhone != null && contactPhone.isNotEmpty) {
-                              // Format phone number
-                              String formattedPhone = contactPhone.replaceAll(RegExp(r'[\d+]'), '');
+                              // Format phone number - keep only digits and +
+                              String formattedPhone = contactPhone.replaceAll(RegExp(r'[^\d+]'), '');
                               if (!formattedPhone.startsWith('+')) {
                                 formattedPhone = '+$formattedPhone';
                               }
@@ -2125,7 +2148,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           // Handle manual entry (both name and phone are required and validated above)
                           if (nameController.text.trim().isNotEmpty && phone.isNotEmpty) {
                             // Format phone number with selected country code
-                            String cleanPhone = phone.replaceAll(RegExp(r'[\d]'), '');
+                            String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
                             String formattedPhone = '${selectedCountry.dialCode}$cleanPhone';
                             
                             final result = await _apiService.addMemberToGroup(

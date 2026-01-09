@@ -28,11 +28,12 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   bool _autoDraw = false;
   String? _autoDrawTime;
   Map<String, dynamic>? _selectedGroupData;
+  bool _hasSpun = false; // New flag to prevent multiple spins
 
   // Wheel segments - will be populated with member indices
   List<int> _wheelValues = [];
-  final Color _lightGreen = const Color(0xFF8BC34A); // Lime green
-  final Color _darkGreen = const Color(0xFF2E7D32); // Forest green
+  final Color _lightGreen = const Color(0xFF7FDE68); // Vibrant green
+  final Color _darkGreen = const Color(0xFFFFD700); // Yellow/Gold
 
   @override
   void initState() {
@@ -74,10 +75,12 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     }
   }
 
-  Future<void> _loadMembers(int groupId) async {
-    setState(() {
-      _isLoadingMembers = true;
-    });
+  Future<void> _loadMembers(int groupId, {bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoadingMembers = true;
+      });
+    }
 
     try {
       // Get all members and previous draws for this group
@@ -227,6 +230,47 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       drawSaved = result != null;
       if (drawSaved) {
         print('Draw saved successfully: $result');
+        
+        // Immediate local state update for better responsiveness
+        if (mounted) {
+          setState(() {
+            // Log for debugging
+            print('--- ATOMIC UPDATE START ---');
+            print('Winning index was: $winnerIndex');
+            print('Members count before: ${_members.length}');
+            
+            // Create a new list for members
+            final updatedMembers = List<Map<String, dynamic>>.from(_members);
+            
+            if (winnerIndex >= 0 && winnerIndex < updatedMembers.length) {
+              final winnerData = updatedMembers[winnerIndex];
+              print('Removing winner: ${winnerData['user_name']} (Member #${winnerData['member_number']})');
+              updatedMembers.removeAt(winnerIndex);
+            }
+            
+            // Atomically update both members and wheel values
+            _members = updatedMembers;
+            
+            final newMemberCount = _members.length;
+            if (newMemberCount == 0) {
+              _wheelValues = List.generate(12, (index) => index);
+            } else {
+              _wheelValues = List.generate(newMemberCount, (index) => index);
+            }
+            
+            _previousWinnerCount++;
+            print('Members count after: ${_members.length}');
+            print('Wheel segments count: ${_wheelValues.length}');
+            print('--- ATOMIC UPDATE END ---');
+          });
+        }
+        
+        // Brief delay before backend sync to ensure UI settles
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _loadMembers(_selectedGroupId!, silent: true);
+          }
+        });
       } else {
         print('Failed to save draw - result was null');
       }
@@ -463,10 +507,13 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     _controller.reset();
     _controller.forward().then((_) {
       final finalAngle = newEndAngle % (2 * math.pi);
-      setState(() {
-        _rotationAngle = finalAngle;
-        _isSpinning = false;
-      });
+      if (mounted) {
+        setState(() {
+          _rotationAngle = finalAngle;
+          _isSpinning = false;
+          _hasSpun = true; // Lock the wheel after spin completes
+        });
+      }
       
       // Calculate and show winner
       final winningSegmentIndex = _getWinningSegment(finalAngle);
@@ -800,7 +847,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                         width: 200,
                         height: 56,
                         child: ElevatedButton(
-                          onPressed: _isSpinning || _selectedGroupId == null || _members.isEmpty
+                          onPressed: _isSpinning || _selectedGroupId == null || _members.isEmpty || _hasSpun
                               ? null
                               : _spinWheel,
                           style: ElevatedButton.styleFrom(
@@ -822,13 +869,13 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text(
-                                  'SPIN',
-                                  style: TextStyle(
+                              : Text(
+                                  _hasSpun ? 'SPUN' : 'SPIN',
+                                  style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
-                                    fontFamily: 'DM Sans',
-                                    letterSpacing: 2,
+                                    letterSpacing: 1.2,
+                                    color: Colors.white,
                                   ),
                                 ),
                         ),
@@ -867,84 +914,62 @@ class WheelPainter extends CustomPainter {
     final segmentAngle = (2 * math.pi) / values.length;
 
     // Draw wheel segments
-    for (int i = 0; i < values.length; i++) {
-      final startAngle = i * segmentAngle - math.pi / 2;
-
-      // Alternate colors
-      final color = i % 2 == 0 ? lightGreen : darkGreen;
-
-      // Draw segment
-      final path = Path()
-        ..moveTo(center.dx, center.dy)
-        ..lineTo(
-          center.dx + radius * math.cos(startAngle),
-          center.dy + radius * math.sin(startAngle),
-        )
-        ..arcTo(
-          Rect.fromCircle(center: center, radius: radius),
-          startAngle,
-          segmentAngle,
-          false,
-        )
-        ..close();
-
-      canvas.drawPath(
-        path,
+    if (values.length == 1) {
+      // Single segment: draw a full circle
+      canvas.drawCircle(
+        center,
+        radius,
         Paint()
-          ..color = color
+          ..color = lightGreen
           ..style = PaintingStyle.fill,
       );
+      
+      // Draw text for the single member
+      _drawSegmentText(canvas, center, radius, 0, (2 * math.pi) / 1);
+    } else {
+      for (int i = 0; i < values.length; i++) {
+        final startAngle = i * segmentAngle - math.pi / 2;
 
-      // Draw white border between segments
-      canvas.drawLine(
-        Offset(
-          center.dx + radius * math.cos(startAngle),
-          center.dy + radius * math.sin(startAngle),
-        ),
-        center,
-        Paint()
-          ..color = Colors.white
-          ..strokeWidth = 2
-          ..style = PaintingStyle.stroke,
-      );
+        // Alternate colors
+        final color = i % 2 == 0 ? lightGreen : darkGreen;
 
-      // Draw text - show member number
-      final textAngle = startAngle + segmentAngle / 2;
-      final textRadius = radius * 0.7;
-      final textX = center.dx + textRadius * math.cos(textAngle);
-      final textY = center.dy + textRadius * math.sin(textAngle);
+        // Draw segment
+        final path = Path()
+          ..moveTo(center.dx, center.dy)
+          ..lineTo(
+            center.dx + radius * math.cos(startAngle),
+            center.dy + radius * math.sin(startAngle),
+          )
+          ..arcTo(
+            Rect.fromCircle(center: center, radius: radius),
+            startAngle,
+            segmentAngle,
+            false,
+          )
+          ..close();
 
-      // Get member number (from API) or fallback to index + 1
-      String displayText;
-      if (members.isNotEmpty && values[i] >= 0 && values[i] < members.length) {
-        final member = members[values[i]];
-        final memberNumber = member['member_number'] as int? ?? (values[i] + 1);
-        displayText = '$memberNumber';
-      } else {
-        // No members or invalid index - don't show text
-        displayText = '';
-      }
+        canvas.drawPath(
+          path,
+          Paint()
+            ..color = color
+            ..style = PaintingStyle.fill,
+        );
 
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: displayText,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF1F2937),
-            fontFamily: 'DM Sans',
+        // Draw white border between segments
+        canvas.drawLine(
+          Offset(
+            center.dx + radius * math.cos(startAngle),
+            center.dy + radius * math.sin(startAngle),
           ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(
-          textX - textPainter.width / 2,
-          textY - textPainter.height / 2,
-        ),
-      );
+          center,
+          Paint()
+            ..color = Colors.white
+            ..strokeWidth = 2
+            ..style = PaintingStyle.stroke,
+        );
+
+        _drawSegmentText(canvas, center, radius, i, segmentAngle);
+      }
     }
 
     // Draw outer circle border
@@ -958,8 +983,56 @@ class WheelPainter extends CustomPainter {
     );
   }
 
+  void _drawSegmentText(Canvas canvas, Offset center, double radius, int i, double segmentAngle) {
+    final startAngle = i * segmentAngle - math.pi / 2;
+    final textAngle = startAngle + segmentAngle / 2;
+    final textRadius = radius * 0.7;
+    final textX = center.dx + textRadius * math.cos(textAngle);
+    final textY = center.dy + textRadius * math.sin(textAngle);
+
+    // Get member number (from API) or fallback to placeholder
+    String displayText;
+    if (members.isNotEmpty && i >= 0 && i < values.length && values[i] < members.length) {
+      final memberIndex = values[i];
+      final member = members[memberIndex];
+      // Use member_number if available, otherwise use a placeholder to stay stable
+      final memberNumber = member['member_number'];
+      if (memberNumber != null) {
+        displayText = '$memberNumber';
+      } else {
+        // Fallback that doesn't deceptively shift (e.g., use the original list position if we can't get member_number)
+        displayText = '#?'; 
+      }
+    } else {
+      displayText = '';
+    }
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: displayText,
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1F2937),
+          fontFamily: 'DM Sans',
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        textX - textPainter.width / 2,
+        textY - textPainter.height / 2,
+      ),
+    );
+  }
+
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant WheelPainter oldDelegate) {
+    return oldDelegate.values != values || oldDelegate.members != members;
+  }
 }
 
 // Custom painter for the pointer
