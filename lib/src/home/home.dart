@@ -6,6 +6,7 @@ import '../profile/profile_screen.dart';
 import '../winners/winners_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../notifications/notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateToGroups;
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _memberGroupsCount = 0;
   int _agentGroupsCount = 0;
   bool _isLoadingCounts = true;
+  int _unreadNotificationsCount = 0;
 
   @override
   void initState() {
@@ -45,6 +47,21 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUserInfo();
     _loadGroupCounts();
     _loadNextPayments();
+    _loadNotificationsCount();
+  }
+
+  Future<void> _loadNotificationsCount() async {
+    try {
+      final notifications = await _apiService.getNotifications();
+      final unreadCount = notifications.where((n) => n['is_read'] == false).length;
+      if (mounted) {
+        setState(() {
+          _unreadNotificationsCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      print('Error loading notifications count: $e');
+    }
   }
 
   Future<void> _loadUserInfo() async {
@@ -455,13 +472,54 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                        SvgPicture.asset(
-                          'assets/svg/bell.svg',
-                          width: 22,
-                          height: 22,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
+                        GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const NotificationsScreen(),
+                              ),
+                            );
+                            _loadNotificationsCount();
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              SvgPicture.asset(
+                                'assets/svg/bell.svg',
+                                width: 22,
+                                height: 22,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              if (_unreadNotificationsCount > 0)
+                                Positioned(
+                                  right: -4,
+                                  top: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    child: Text(
+                                      _unreadNotificationsCount > 9 ? '9+' : '$_unreadNotificationsCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],

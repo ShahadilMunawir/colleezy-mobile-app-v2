@@ -405,6 +405,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           final email = member['user_email'] as String?;
           final name = member['user_name'] as String?;
           final isAgent = member['is_agent'] as bool? ?? false;
+          final isOwner = member['is_owner'] as bool? ?? false;
           
           // Use provided name, or extract from email, or use "Unknown User"
           String displayName = name ?? 
@@ -413,12 +414,22 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           
           final memberNumber = member['member_number'] as int? ?? (index + 1);
           
+          // Determine the role to display
+          String role;
+          if (isOwner) {
+            role = 'Owner';
+          } else if (isAgent) {
+            role = 'Agent';
+          } else {
+            role = 'Member';
+          }
+          
           return _buildMemberItem(
             memberId: member['id'] as int,
             userId: member['user_id'] as int,
             name: displayName,
             email: email ?? '',
-            role: isAgent ? 'Agent' : 'Member',
+            role: role,
             initial: initial,
             avatarColor: _getAvatarColor(index),
             isAgent: isAgent,

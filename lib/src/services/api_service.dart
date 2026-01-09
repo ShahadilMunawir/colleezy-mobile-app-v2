@@ -338,6 +338,8 @@ class ApiService {
     String? commissionType,
     double? commissionValue,
     bool joinAsMember = true,
+    bool autoDraw = false,
+    String? autoDrawTime,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups');
@@ -353,7 +355,12 @@ class ApiService {
         'amount_per_period': amountPerPeriod,
         'collection_period': collectionPeriod.toLowerCase(),
         'join_as_member': joinAsMember,
+        'auto_draw': autoDraw,
       };
+      
+      if (autoDrawTime != null) {
+        body['auto_draw_time'] = autoDrawTime;
+      }
       
       // Add commission fields if commission is enabled
       if (hasCommission && commissionType != null && commissionValue != null) {
@@ -412,6 +419,29 @@ class ApiService {
       return null;
     } catch (e) {
       print('Error getting group: $e');
+      return null;
+    }
+  }
+  
+  /// Update a kuri group's settings
+  Future<Map<String, dynamic>?> updateGroup(int groupId, Map<String, dynamic> data) async {
+    try {
+      final url = Uri.parse('$baseUrl/kuri-groups/$groupId');
+      final response = await http.put(
+        url,
+        headers: await _getHeaders(),
+        body: jsonEncode(data),
+      );
+      
+      if (response.statusCode == 200) {
+        print('Group updated successfully: ${response.body}');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        print('Failed to update group: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error updating group: $e');
       return null;
     }
   }
@@ -708,6 +738,55 @@ class ApiService {
     } catch (e) {
       print('Error getting group draws: $e');
       return [];
+    }
+  }
+
+  /// Get all notifications for the current user
+  Future<List<Map<String, dynamic>>> getNotifications() async {
+    try {
+      final url = Uri.parse('$baseUrl/notifications');
+      final response = await http.get(url, headers: await _getHeaders());
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('Error getting notifications: $e');
+      return [];
+    }
+  }
+
+  /// Mark a notification as read
+  Future<bool> markNotificationAsRead(int notificationId) async {
+    try {
+      final url = Uri.parse('$baseUrl/notifications/$notificationId/read');
+      final response = await http.put(url, headers: await _getHeaders());
+      
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error marking notification as read: $e');
+      return false;
+    }
+  }
+
+  /// Mark all notifications as read
+  Future<int> markAllNotificationsAsRead() async {
+    try {
+      final url = Uri.parse('$baseUrl/notifications/read-all');
+      final response = await http.put(url, headers: await _getHeaders());
+      
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as int;
+      }
+      return 0;
+    } catch (e) {
+      print('Error marking all notifications as read: $e');
+      return 0;
     }
   }
 }

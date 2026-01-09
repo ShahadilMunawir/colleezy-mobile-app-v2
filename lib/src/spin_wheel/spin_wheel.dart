@@ -25,6 +25,9 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   int _previousWinnerCount = 0;  // Number of previous winners
   bool _isLoadingGroups = true;
   bool _isLoadingMembers = false;
+  bool _autoDraw = false;
+  String? _autoDrawTime;
+  Map<String, dynamic>? _selectedGroupData;
 
   // Wheel segments - will be populated with member indices
   List<int> _wheelValues = [];
@@ -93,24 +96,16 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
           .toList();
       
       // Create wheel values based on eligible member count
-      // Always create 12 segments for the wheel
       final memberCount = eligibleMembers.length;
       List<int> wheelValues = [];
-      
+
       if (memberCount == 0) {
         // No eligible members - show placeholder numbers
         wheelValues = List.generate(12, (index) => index);
-      } else if (memberCount <= 12) {
-        // Use member indices directly, repeat if needed to fill 12 segments
-        wheelValues = List.generate(12, (index) => index % memberCount);
       } else {
-        // More than 12 members - distribute evenly across 12 segments
-        // Each segment represents a range of members
-        wheelValues = List.generate(12, (index) {
-          // Map segment index to member index
-          // This ensures all members have a chance to be selected
-          return ((index * memberCount) / 12).floor();
-        });
+        // Create segments equal to the number of eligible members
+        // Each segment represents one member
+        wheelValues = List.generate(memberCount, (index) => index);
       }
       
       if (mounted) {
@@ -120,6 +115,12 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
           _totalMemberCount = allMembers.length;
           _previousWinnerCount = winnerUserIds.length;
           _isLoadingMembers = false;
+          
+          // Set auto draw settings from group data
+          if (_selectedGroupData != null) {
+            _autoDraw = _selectedGroupData!['auto_draw'] as bool? ?? false;
+            _autoDrawTime = _selectedGroupData!['auto_draw_time'] as String?;
+          }
         });
       }
     } catch (e) {
@@ -196,10 +197,6 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
 
     // Get the winner from the wheel segment
     final winnerIndex = _wheelValues[winningSegmentIndex];
-    if (winnerIndex >= _members.length) {
-      // Handle case where index is out of bounds
-      return;
-    }
 
     final winner = _members[winnerIndex];
     final winnerUserId = winner['user_id'] as int;
@@ -341,6 +338,86 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
         );
       },
     );
+  }
+
+  Future<void> _updateAutoDrawSettings(bool enabled, String? time) async {
+    if (_selectedGroupId == null) return;
+    
+    // Optimistic update
+    setState(() {
+      _autoDraw = enabled;
+      _autoDrawTime = time;
+    });
+
+    try {
+      final success = await _apiService.updateGroup(_selectedGroupId!, {
+        'auto_draw': enabled,
+        'auto_draw_time': time,
+        // Send other required fields from _selectedGroupData to satisfy schema validation
+        'name': _selectedGroupData!['name'],
+        'starting_date': _selectedGroupData!['starting_date'],
+        'total_amount': _selectedGroupData!['total_amount'],
+        'duration': _selectedGroupData!['duration'],
+        'amount_per_period': _selectedGroupData!['amount_per_period'],
+        'collection_period': _selectedGroupData!['collection_period'],
+      });
+
+      if (success != null) {
+        _selectedGroupData = success;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Auto draw settings updated'),
+            backgroundColor: Color(0xFF2D7A4F),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      } else {
+        throw Exception('Failed to update settings');
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        _autoDraw = _selectedGroupData?['auto_draw'] as bool? ?? false;
+        _autoDrawTime = _selectedGroupData?['auto_draw_time'] as String?;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update settings: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: _autoDrawTime != null 
+          ? TimeOfDay(
+              hour: int.parse(_autoDrawTime!.split(':')[0]),
+              minute: int.parse(_autoDrawTime!.split(':')[1]),
+            )
+          : TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF2D7A4F),
+              onPrimary: Colors.white,
+              surface: Color(0xFF141414),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF171717),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      _updateAutoDrawSettings(true, timeStr);
+    }
   }
 
   void _spinWheel() {
@@ -512,9 +589,10 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                   (g) => g['name'] == newValue,
                                 );
                                 final groupId = selectedGroup['id'] as int;
-                        setState(() {
+                                setState(() {
                                   _selectedGroupName = newValue;
                                   _selectedGroupId = groupId;
+                                  _selectedGroupData = selectedGroup;
                                   _members = [];
                                   _wheelValues = [];
                                 });
@@ -567,7 +645,84 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                       ),
                     ),
                   ),
-                const SizedBox(height: 32),
+                // Auto Draw Toggle
+                if (_selectedGroupId != null && !_isLoadingMembers)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF141414),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.auto_mode,
+                                color: Color(0xFF2D7A4F),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Auto Draw',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFFD0CDC6),
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                  if (_autoDraw && _autoDrawTime != null)
+                                    Text(
+                                      'Scheduled at $_autoDrawTime',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFFA5A5A5),
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              if (_autoDraw)
+                                TextButton(
+                                  onPressed: () => _selectTime(context),
+                                  child: Text(
+                                    _autoDrawTime ?? 'Set Time',
+                                    style: const TextStyle(
+                                      color: Color(0xFF2D7A4F),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              Switch(
+                                value: _autoDraw,
+                                onChanged: (value) {
+                                  if (value && _autoDrawTime == null) {
+                                    _selectTime(context);
+                                  } else {
+                                    _updateAutoDrawSettings(value, _autoDrawTime);
+                                  }
+                                },
+                                activeColor: const Color(0xFF2D7A4F),
+                                activeTrackColor: const Color(0xFF2D7A4F).withOpacity(0.3),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 10),
                 // Spin the Wheel Title
                 const Text(
                   'Spin the Wheel',
@@ -639,7 +794,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 20),
                       // Spin Button
                       SizedBox(
                         width: 200,
@@ -761,13 +916,13 @@ class WheelPainter extends CustomPainter {
 
       // Get member number (from API) or fallback to index + 1
       String displayText;
-      if (members.isNotEmpty && values[i] < members.length) {
+      if (members.isNotEmpty && values[i] >= 0 && values[i] < members.length) {
         final member = members[values[i]];
         final memberNumber = member['member_number'] as int? ?? (values[i] + 1);
         displayText = '$memberNumber';
       } else {
-        // No members or invalid index - show number
-        displayText = '${values[i] + 1}';
+        // No members or invalid index - don't show text
+        displayText = '';
       }
 
       final textPainter = TextPainter(
@@ -838,4 +993,3 @@ class PointerPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-
