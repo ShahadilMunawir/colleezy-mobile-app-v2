@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'chat_screen.dart';
 import 'member_details.dart';
 import 'group_info_screen.dart';
+import 'agent_members_screen.dart';
 import '../services/api_service.dart';
 
 /// Country data for the country code picker
@@ -229,28 +230,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                         ],
                       ),
                     ),
-                    // Edit icon
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: SvgPicture.asset(
-                        'assets/svg/add.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => ChatScreen(
-                              groupName: widget.groupName,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -279,14 +258,18 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             Expanded(
               child: _buildMembersList(),
             ),
-            // Add Member Button
+            // Add Member/Agent Button
             Container(
               padding: const EdgeInsets.all(20),
               child: Center(
                 child: IntrinsicWidth(
                     child: ElevatedButton(
                     onPressed: () {
-                      _showAddMemberModal(context);
+                      if (_selectedTab == 0) {
+                        _showAddMemberModal(context);
+                      } else {
+                        _showAddAgentModal(context);
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2D7A4F),
@@ -320,9 +303,9 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Text(
-                          'Add Member',
-                          style: TextStyle(
+                        Text(
+                          _selectedTab == 0 ? 'Add Member' : 'Add Agent',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'DM Sans',
@@ -482,19 +465,36 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }) {
     return InkWell(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => MemberDetailsScreen(
-              groupId: widget.groupId,
-              memberUserId: userId,
-              memberName: name,
-              memberRole: role,
-              memberInitial: initial,
-              avatarColor: avatarColor,
-              currentUserIsAgent: _currentUserIsAgent,
+        // If in Agents tab and tapping an agent, navigate to AgentMembersScreen
+        if (_selectedTab == 1 && isAgent) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => AgentMembersScreen(
+                groupId: widget.groupId,
+                groupName: widget.groupName,
+                agentUserId: userId,
+                agentName: name,
+                agentInitial: initial,
+                avatarColor: avatarColor,
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          // Otherwise, navigate to member details
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MemberDetailsScreen(
+                groupId: widget.groupId,
+                memberUserId: userId,
+                memberName: name,
+                memberRole: role,
+                memberInitial: initial,
+                avatarColor: avatarColor,
+                currentUserIsAgent: _currentUserIsAgent,
+              ),
+            ),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -772,6 +772,11 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   void _showMemberMenu(BuildContext context, String memberName, int memberId, int userId, bool isAgent) {
+    // Don't show menu if current user is not an agent
+    if (!_currentUserIsAgent) {
+      return;
+    }
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -788,22 +793,34 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!isAgent && _currentUserIsAgent)
+              // Drag handle
+              Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 16),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B7280).withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              if (!isAgent)
                 _buildMenuOption(
                   label: 'Make Agent',
+                  icon: Icons.admin_panel_settings,
                   onTap: () {
                     Navigator.pop(context);
                     _makeMemberAgent(userId);
                   },
                 ),
-              if (_currentUserIsAgent)
-                _buildMenuOption(
-                  label: 'Remove',
-                  onTap: () {
-                    Navigator.pop(context);
-                    _confirmRemoveMember(memberName, userId);
-                  },
-                ),
+              _buildMenuOption(
+                label: 'Remove Member',
+                icon: Icons.person_remove,
+                isDestructive: true,
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmRemoveMember(memberName, userId);
+                },
+              ),
             ],
           ),
         );
@@ -813,7 +830,9 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
   Widget _buildMenuOption({
     required String label,
+    required IconData icon,
     required VoidCallback onTap,
+    bool isDestructive = false,
   }) {
     return InkWell(
       onTap: onTap,
@@ -821,34 +840,18 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Container(
-                  width: 16,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+            Icon(
+              icon,
+              color: isDestructive ? Colors.red : Colors.white,
+              size: 24,
             ),
             const SizedBox(width: 16),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: isDestructive ? Colors.red : Colors.white,
                 fontFamily: 'DM Sans',
               ),
             ),
@@ -921,6 +924,10 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     final Map<Contact, bool> selectedContacts = {};
     _Country selectedCountry = _countries[2]; // Default to India
     String contactSearchQuery = '';
+    int? selectedAgentId; // Track selected agent
+    
+    // Get list of agents from current members
+    final agents = _allMembers.where((member) => member['is_agent'] == true).toList();
     
     // Capture the parent scaffold messenger for showing SnackBars above the modal
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -1142,6 +1149,85 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
+                          // Agent Selection Dropdown
+                          if (agents.isNotEmpty) ...[
+                            const Text(
+                              'Assign to Agent',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF474540),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int?>(
+                                  value: selectedAgentId,
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFF474540),
+                                  icon: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFFA5A5A5),
+                                  ),
+                                  hint: const Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text(
+                                      'Select an agent (optional)',
+                                      style: TextStyle(
+                                        color: Color(0xFFA5A5A5),
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                    ),
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 16),
+                                        child: Text(
+                                          'No agent',
+                                          style: TextStyle(
+                                            color: Color(0xFFA5A5A5),
+                                            fontFamily: 'DM Sans',
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    ...agents.map((agent) {
+                                      final agentUserId = agent['user_id'] as int;
+                                      final agentName = agent['user_name'] as String? ?? 
+                                                        _extractNameFromEmail(agent['user_email'] as String? ?? 'Unknown');
+                                      return DropdownMenuItem<int?>(
+                                        value: agentUserId,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                                          child: Text(
+                                            agentName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'DM Sans',
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ],
+                                  onChanged: (value) {
+                                    setModalState(() {
+                                      selectedAgentId = value;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
                           // Separator with "Or"
                           Row(
                             children: [
@@ -1403,6 +1489,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                     groupId: widget.groupId,
                                     phone: formattedPhone,
                                     name: contactName,
+                                    agentId: selectedAgentId,
                                   );
                                   
                                   if (result != null) {
@@ -1427,6 +1514,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                 groupId: widget.groupId,
                                 phone: formattedPhone,
                                 name: name,
+                                agentId: selectedAgentId,
                               );
                               
                               if (result != null) {
@@ -1502,6 +1590,622 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         );
       },
     );
+  }
+
+  void _showAddAgentModal(BuildContext context) {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController phoneController = TextEditingController();
+    final TextEditingController contactSearchController = TextEditingController();
+    final Map<Contact, bool> selectedContacts = {};
+    _Country selectedCountry = _countries[2]; // Default to India
+    String contactSearchQuery = '';
+    
+    // Capture the parent scaffold messenger for showing SnackBars above the modal
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    // Load contacts if not already loaded
+    if (_deviceContacts.isEmpty && !_contactsLoading) {
+      _loadContacts();
+    }
+    
+    void showErrorToast(String message) {
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext modalContext) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            
+            // Filter contacts based on search query
+            List<Contact> filteredContacts = contactSearchQuery.isEmpty
+                ? _deviceContacts
+                : _deviceContacts.where((contact) {
+                    final name = _getContactName(contact).toLowerCase();
+                    final phone = _getContactPhone(contact)?.toLowerCase() ?? '';
+                    final query = contactSearchQuery.toLowerCase();
+                    return name.contains(query) || phone.contains(query);
+                  }).toList();
+            
+            void showCountryPicker() {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                isScrollControlled: true,
+                builder: (ctx) => _CountryPickerSheet(
+                  countries: _countries,
+                  selectedCountry: selectedCountry,
+                  onSelect: (country) {
+                    setModalState(() {
+                      selectedCountry = country;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                ),
+              );
+            }
+            
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.85,
+              decoration: const BoxDecoration(
+                color: Color(0xFF171717),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA5A5A5),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Title
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Add Agent',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(modalContext),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Content
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Name Field
+                            const Text(
+                              'Name',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF141414),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TextField(
+                                controller: nameController,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'DM Sans',
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: 'Enter Name',
+                                  hintStyle: TextStyle(
+                                    color: Color(0xFFA5A5A5),
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
+                                  filled: true,
+                                  fillColor: Color(0xFF474540)
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            // Phone Field with Country Picker
+                            const Text(
+                              'Phone',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF474540),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Country Code Picker
+                                  GestureDetector(
+                                    onTap: showCountryPicker,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          right: BorderSide(
+                                            color: Color(0xFF5A5A5A),
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            selectedCountry.flag,
+                                            style: const TextStyle(fontSize: 16),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            selectedCountry.dialCode,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              fontFamily: 'DM Sans',
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.keyboard_arrow_down_rounded,
+                                            color: Color(0xFFA5A5A5),
+                                            size: 16,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  // Phone Number Input
+                                  Expanded(
+                                    child: TextField(
+                                      controller: phoneController,
+                                      keyboardType: TextInputType.phone,
+                                      maxLength: selectedCountry.phoneLength,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: 'Phone (${selectedCountry.phoneLength} digits)',
+                                        hintStyle: const TextStyle(
+                                          color: Color(0xFFA5A5A5),
+                                          fontFamily: 'DM Sans',
+                                        ),
+                                        border: InputBorder.none,
+                                        counterText: '',
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Separator with "Or"
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: const Color(0xFF2E2E2E),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  child: const Text(
+                                    'Or',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFFA5A5A5),
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: const Color(0xFF2E2E2E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            // Select from Contact Section
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Select from Contact',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                                if (_contactsLoading)
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                                    ),
+                                  )
+                                else
+                                  TextButton(
+                                    onPressed: () {
+                                      _loadContacts();
+                                      setModalState(() {});
+                                    },
+                                    child: const Text(
+                                      'Refresh',
+                                      style: TextStyle(
+                                        color: Color(0xFF2D7A4F),
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Contact Search Field
+                            Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF141414),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: TextField(
+                                controller: contactSearchController,
+                                onChanged: (value) {
+                                  setModalState(() {
+                                    contactSearchQuery = value;
+                                  });
+                                },
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'DM Sans',
+                                ),
+                                decoration: const InputDecoration(
+                                  hintText: 'Search contacts...',
+                                  hintStyle: TextStyle(
+                                    color: Color(0xFFA5A5A5),
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    color: Color(0xFFA5A5A5),
+                                    size: 22,
+                                  ),
+                                  border: InputBorder.none,
+                                  filled: true,
+                                  fillColor: Color(0xFF474540),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Contact List
+                            if (_contactsLoading)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20.0),
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                                  ),
+                                ),
+                              )
+                            else if (_deviceContacts.isEmpty)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20.0),
+                                  child: Text(
+                                    'No contacts found. Please allow contact permission.',
+                                    style: TextStyle(
+                                      color: Color(0xFFA5A5A5),
+                                      fontSize: 14,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (filteredContacts.isEmpty)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(20.0),
+                                  child: Text(
+                                    'No contacts found',
+                                    style: TextStyle(
+                                      color: Color(0xFFA5A5A5),
+                                      fontSize: 14,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Column(
+                                children: [
+                                  ...filteredContacts.map((contact) {
+                                    final name = _getContactName(contact);
+                                    final initial = _getContactInitial(contact);
+                                    final phone = _getContactPhone(contact);
+                                    final isSelected = selectedContacts[contact] ?? false;
+                                    
+                                    return _buildContactItem(
+                                      name: name,
+                                      initial: initial,
+                                      avatarColor: _getAvatarColor(contact.hashCode % _avatarColors.length),
+                                      isSelected: isSelected,
+                                      onTap: () {
+                                        setModalState(() {
+                                          selectedContacts[contact] = !isSelected;
+                                        });
+                                      },
+                                      phone: phone,
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Save Button
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Get selected contacts list
+                        final selectedContactsList = selectedContacts.entries
+                            .where((entry) => entry.value)
+                            .map((entry) => entry.key)
+                            .toList();
+                        
+                        // Validate inputs
+                        if (nameController.text.trim().isEmpty && phoneController.text.trim().isEmpty && selectedContactsList.isEmpty) {
+                          showErrorToast('Please enter a name and phone number, or select a contact');
+                          return;
+                        }
+                        
+                        if (nameController.text.trim().isEmpty && !selectedContactsList.isEmpty) {
+                          showErrorToast('Name is required when adding by phone');
+                          return;
+                        }
+                        
+                        // Validate manual entry if provided
+                        String phone = phoneController.text.trim();
+                        if (phone.isNotEmpty) {
+                          // Remove all non-digit characters except +
+                          String cleanPhone = phone.replaceAll(RegExp(r'[\D]+'), '');
+                          
+                          if (cleanPhone.isEmpty) {
+                            showErrorToast('Please enter a valid phone number');
+                            return;
+                          }
+                          
+                          if (cleanPhone.length < 7) {
+                            showErrorToast('Please enter a valid phone number (at least 7 digits)');
+                            return;
+                          }
+                          
+                          if (cleanPhone.length > 15) {
+                            showErrorToast('Phone number is too long (maximum 15 digits)');
+                            return;
+                          }
+                        }
+                        
+                        // Show loading
+                        showDialog(
+                          context: modalContext,
+                          barrierDismissible: false,
+                          builder: (dialogContext) => const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                            ),
+                          ),
+                        );
+                        
+                        try {
+                          int successCount = 0;
+                          int failCount = 0;
+                          
+                          // Handle selected contacts
+                          for (var contact in selectedContactsList) {
+                            final contactPhone = _getContactPhone(contact);
+                            final contactName = _getContactName(contact);
+                            
+                            if (contactPhone != null && contactPhone.isNotEmpty) {
+                              // Format phone number
+                              String formattedPhone = contactPhone.replaceAll(RegExp(r'[\d+]'), '');
+                              if (!formattedPhone.startsWith('+')) {
+                                formattedPhone = '+$formattedPhone';
+                              }
+                              
+                              try {
+                                final result = await _apiService.addMemberToGroup(
+                                  groupId: widget.groupId,
+                                  phone: formattedPhone,
+                                  name: contactName,
+                                );
+                                
+                                if (result != null) {
+                                  // Make the member an agent
+                                  final agentResult = await _apiService.makeMemberAgent(
+                                    groupId: widget.groupId,
+                                    userId: result['user_id'] as int,
+                                  );
+                                  
+                                  if (agentResult != null) {
+                                    successCount++;
+                                  } else {
+                                    failCount++;
+                                  }
+                                } else {
+                                  failCount++;
+                                }
+                              } catch (e) {
+                                failCount++;
+                                print('Error adding ${contactName} as agent: $e');
+                              }
+                            }
+                          }
+                          
+                          // Handle manual entry (both name and phone are required and validated above)
+                          if (nameController.text.trim().isNotEmpty && phone.isNotEmpty) {
+                            // Format phone number with selected country code
+                            String cleanPhone = phone.replaceAll(RegExp(r'[\d]'), '');
+                            String formattedPhone = '${selectedCountry.dialCode}$cleanPhone';
+                            
+                            final result = await _apiService.addMemberToGroup(
+                              groupId: widget.groupId,
+                              phone: formattedPhone,
+                              name: nameController.text.trim(),
+                            );
+                            
+                            if (result != null) {
+                              // Make the member an agent
+                              final agentResult = await _apiService.makeMemberAgent(
+                                groupId: widget.groupId,
+                                userId: result['user_id'] as int,
+                              );
+                              
+                              if (agentResult != null) {
+                                successCount++;
+                              } else {
+                                failCount++;
+                              }
+                            } else {
+                              failCount++;
+                            }
+                          }
+                          
+                          // Close loading dialog
+                          if (mounted) Navigator.pop(modalContext);
+                          
+                          if (successCount > 0) {
+                            // Close add agent modal
+                            if (mounted) Navigator.pop(modalContext);
+                            
+                            // Show success message (modal is closed, so normal SnackBar is fine)
+                            if (mounted) {
+                              String message = 'Successfully added $successCount agent(s)';
+                              if (failCount > 0) {
+                                message += '. $failCount agent(s) failed.';
+                              }
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  backgroundColor: const Color(0xFF2D7A4F),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: const EdgeInsets.all(16),
+                                ),
+                              );
+                            }
+                            
+                            // Refresh members list
+                            _loadMembers();
+                          } else {
+                            if (mounted) {
+                              showErrorToast('Failed to add agent(s). Please try again.');
+                            }
+                          }
+                        } catch (e) {
+                          // Close loading dialog
+                          if (mounted) Navigator.pop(modalContext);
+                          
+                          if (mounted) {
+                            showErrorToast('Error: ${e.toString()}');
+                          }
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2D7A4F),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Add Agent',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
   }
 
   Widget _buildContactItem({
@@ -1591,7 +2295,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       ),
     );
   }
-}
 
 /// Bottom sheet for selecting a country code
 class _CountryPickerSheet extends StatefulWidget {

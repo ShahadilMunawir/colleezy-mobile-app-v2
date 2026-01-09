@@ -15,11 +15,21 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final ValueNotifier<int> _groupsRefreshTrigger = ValueNotifier<int>(0);
+  int _groupsInitialTab = 0;
 
   List<Widget> get _pages => [
-    const HomeScreen(),
+    HomeScreen(
+      onNavigateToGroups: (tabIndex) {
+        setState(() {
+          _selectedIndex = 1;
+          _groupsInitialTab = tabIndex;
+          _groupsRefreshTrigger.value++;
+        });
+      },
+    ),
     GroupsScreen(
       key: ValueKey(_groupsRefreshTrigger.value),
+      initialTab: _groupsInitialTab,
     ),
     const DrawSelectionScreen(),
     const HistoryScreen(),

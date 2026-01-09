@@ -337,6 +337,7 @@ class ApiService {
     bool hasCommission = false,
     String? commissionType,
     double? commissionValue,
+    bool joinAsMember = true,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups');
@@ -351,6 +352,7 @@ class ApiService {
         'duration': duration,
         'amount_per_period': amountPerPeriod,
         'collection_period': collectionPeriod.toLowerCase(),
+        'join_as_member': joinAsMember,
       };
       
       // Add commission fields if commission is enabled
@@ -437,6 +439,7 @@ class ApiService {
     String? email,
     String? phone,
     String? name,
+    int? agentId,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members');
@@ -450,6 +453,9 @@ class ApiService {
       }
       if (name != null && name.isNotEmpty) {
         body['name'] = name;
+      }
+      if (agentId != null) {
+        body['agent_id'] = agentId;
       }
       
       final response = await http.post(

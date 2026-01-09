@@ -23,6 +23,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   String _collectPeriod = 'Monthly';
   bool _commissionYes = false;
   String _commissionType = 'percentage'; // 'percentage' or 'cash'
+  bool _joinAsMember = true; // Whether creator wants to join as a member
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
 
@@ -293,6 +294,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                       // Percentage Section
                       _buildPercentageField(),
                     ],
+                    const SizedBox(height: 32),
+                    // Join as Member Section
+                    _buildJoinAsMemberSection(),
                     const SizedBox(height: 32),
                     // Save Button
                     _buildSaveButton(),
@@ -822,6 +826,84 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     );
   }
 
+  Widget _buildJoinAsMemberSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Membership',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFE0DED9),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Do you want to join this group as a member?',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: Color(0xFFA5A5A5),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildToggleSwitch(
+                label: 'Join as Member',
+                value: _joinAsMember,
+                onChanged: (value) {
+                  setState(() {
+                    _joinAsMember = value;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        if (!_joinAsMember) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: const Color(0xFF2D7A4F),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: const [
+                Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF2D7A4F),
+                  size: 20,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'You will be the owner only. No money collection from you.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFE0DED9),
+                      fontFamily: 'DM Sans',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Future<void> _handleSave() async {
     // Validate form fields
     if (!_formKey.currentState!.validate()) {
@@ -906,6 +988,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         hasCommission: hasCommission,
         commissionType: commissionType,
         commissionValue: commissionValue,
+        joinAsMember: _joinAsMember,
       );
 
       if (result != null && mounted) {

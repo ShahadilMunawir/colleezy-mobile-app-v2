@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import '../groups/create_group.dart';
 import '../profile/profile_screen.dart';
 import '../winners/winners_screen.dart';
@@ -7,7 +8,8 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Function(int tabIndex)? onNavigateToGroups;
+  const HomeScreen({super.key, this.onNavigateToGroups});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -21,10 +23,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _userName;
   String? _userPhotoUrl;
   bool _isLoadingUser = true;
-  List<Map<String, dynamic>> _groups = [];
-  Map<int, int> _groupMemberCounts = {}; // groupId -> memberCount
-  bool _isLoadingGroups = true;
   List<Map<String, dynamic>> _nextPayments = []; // {groupId, groupName, nextPaymentDate, memberCount}
+  bool _isLoadingGroups = true;
+  int _totalGroupsCount = 0;
+  int _memberGroupsCount = 0;
+  int _agentGroupsCount = 0;
+  bool _isLoadingCounts = true;
 
   @override
   void initState() {
@@ -39,7 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _loadUserInfo();
-    _loadGroups();
+    _loadGroupCounts();
+    _loadNextPayments();
   }
 
   Future<void> _loadUserInfo() async {
@@ -81,16 +86,73 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _loadGroups() async {
+  Future<void> _loadGroupCounts() async {
+    setState(() {
+      _isLoadingCounts = true;
+    });
+
+    try {
+      // Get current user ID
+      final currentUser = await _apiService.getCurrentUser();
+      int? currentUserId;
+      if (currentUser != null) {
+        currentUserId = currentUser['id'] as int?;
+      }
+
+      // Load all groups
+      final groups = await _apiService.getGroups();
+      int totalCount = groups.length;
+      int memberCount = 0;
+      int agentCount = 0;
+
+      // Check agent status for each group
+      for (var group in groups) {
+        final groupId = group['id'] as int;
+        try {
+          final members = await _apiService.getGroupMembers(groupId);
+          if (currentUserId != null) {
+            final currentUserMember = members.firstWhere(
+              (member) => member['user_id'] == currentUserId,
+              orElse: () => <String, dynamic>{},
+            );
+            if (currentUserMember.isNotEmpty) {
+              if (currentUserMember['is_agent'] == true) {
+                agentCount++;
+              } else {
+                memberCount++;
+              }
+            }
+          }
+        } catch (e) {
+          print('Error checking agent status for group $groupId: $e');
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _totalGroupsCount = totalCount;
+          _memberGroupsCount = memberCount;
+          _agentGroupsCount = agentCount;
+          _isLoadingCounts = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading group counts: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingCounts = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadNextPayments() async {
     setState(() {
       _isLoadingGroups = true;
     });
 
     try {
       final groups = await _apiService.getGroups();
-      
-      // Load member counts and calculate next payments for each group
-      final memberCounts = <int, int>{};
       final nextPayments = <Map<String, dynamic>>[];
       
       for (var group in groups) {
@@ -98,7 +160,6 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final members = await _apiService.getGroupMembers(groupId);
           final memberCount = members.length;
-          memberCounts[groupId] = memberCount;
           
           // Calculate next payment date (pass member count directly)
           final nextPayment = await _calculateNextPayment(group, groupId, memberCount);
@@ -107,7 +168,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         } catch (e) {
           print('Error loading members for group $groupId: $e');
-          memberCounts[groupId] = 0;
         }
       }
 
@@ -120,18 +180,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (mounted) {
         setState(() {
-          _groups = groups;
-          _groupMemberCounts = memberCounts;
           _nextPayments = nextPayments;
           _isLoadingGroups = false;
-          // Reset current page if it's beyond the new groups length
-          if (_currentPage >= groups.length && groups.isNotEmpty) {
-            _currentPage = 0;
-          }
         });
       }
     } catch (e) {
-      print('Error loading groups: $e');
+      print('Error loading groups for next payments: $e');
       if (mounted) {
         setState(() {
           _isLoadingGroups = false;
@@ -222,6 +276,116 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void _showInviteModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF2A2A2A),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFF6B7280).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Text(
+                'Invite Friends',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFFE0DED9),
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+            // Share button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Share the Play Store link
+                    const playStoreLink = 'https://play.google.com/store/apps/details?id=com.colleezy.app';
+                    const message = 'Check out Colleezy - Manage your group savings and kuri easily! Download now: $playStoreLink';
+                    
+                    Share.share(
+                      message,
+                      subject: 'Join me on Colleezy',
+                    );
+                    
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2D7A4F),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.share,
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Share App Link',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Description
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Share the app with your friends and start managing groups together!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFFA5A5A5),
+                  fontFamily: 'DM Sans',
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -306,71 +470,43 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 // Carousel
                 SliverToBoxAdapter(
-                  child: _isLoadingGroups
-                      ? const SizedBox(
-                          height: 180,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
-                            ),
-                          ),
-                        )
-                      : _groups.isEmpty
-                          ? const SizedBox(
-                              height: 180,
-                              child: Center(
-                                child: Text(
-                                  'No groups yet',
-                                  style: TextStyle(
-                                    color: Color(0xFFA5A5A5),
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : SizedBox(
-                              height: 180,
-                              child: _groups.length == 1
-                                  ? Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                                      child: _buildGroupCards().first,
-                                    )
-                                  : PageView(
-                                      padEnds: false,
-                                      controller: _pageController,
-                                      onPageChanged: (index) {
-                                        setState(() {
-                                          _currentPage = index;
-                                        });
-                                      },
-                                      children: _buildGroupCards(),
-                                    ),
-                            ),
+                  child: SizedBox(
+                    height: 180,
+                    child: PageView(
+                      padEnds: false,
+                      controller: _pageController,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      children: _buildCategoryCards(),
+                    ),
+                  ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 16)),
                 // Page indicator
-                if (!_isLoadingGroups && _groups.isNotEmpty)
-                  SliverToBoxAdapter(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _groups.length,
-                        (index) => GestureDetector(
-                          onTap: () {
-                            _pageController.animateToPage(
-                              index,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: _buildDot(_currentPage == index),
-                          ),
+                SliverToBoxAdapter(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      3,
+                      (index) => GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(
+                            index,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: _buildDot(_currentPage == index),
                         ),
                       ),
                     ),
                   ),
+                ),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
                 // Wrapped section with top border radius
                 SliverFillRemaining(
@@ -410,9 +546,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       backgroundColor: Colors.transparent,
                                       builder: (context) => const CreateGroupScreen(),
                                     );
-                                    // Refresh groups if a new group was created
+                                    // Refresh counts and next payments if a new group was created
                                     if (result == true) {
-                                      _loadGroups();
+                                      _loadGroupCounts();
+                                      _loadNextPayments();
                                     }
                                   },
                                 ),
@@ -420,6 +557,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   svgPath: 'assets/svg/invite.svg',
                                   label: 'Invite',
                                   color: const Color(0xFF2D7A4F),
+                                  onTap: _showInviteModal,
                                 ),
                                 _buildActionButton(
                                   svgPath: 'assets/svg/winnder.svg',
@@ -646,27 +784,42 @@ class _HomeScreenState extends State<HomeScreen> {
     return name[0].toUpperCase();
   }
 
-  List<Widget> _buildGroupCards() {
-    if (_groups.isEmpty) {
-      return [];
-    }
-
-    return List.generate(_groups.length, (index) {
-      final group = _groups[index];
-      final groupId = group['id'] as int;
-      final groupName = group['name'] as String? ?? 'Unnamed Group';
-      final totalAmount = (group['total_amount'] as num?)?.toDouble() ?? 0.0;
-      final memberCount = _groupMemberCounts[groupId] ?? 0;
-      final isLast = index == _groups.length - 1;
-      
-      return GroupCard(
-        title: groupName,
-        amount: totalAmount.toStringAsFixed(0),
-        totalMembers: memberCount.toString(),
-        isLast: isLast,
-        isSingle: _groups.length == 1,
-      );
-    });
+  List<Widget> _buildCategoryCards() {
+    return [
+      CategoryCard(
+        title: 'My Groups',
+        description: 'All your groups',
+        icon: Icons.group,
+        isLast: false,
+        count: _totalGroupsCount,
+        isLoading: _isLoadingCounts,
+        onTap: () {
+          widget.onNavigateToGroups?.call(0);
+        },
+      ),
+      CategoryCard(
+        title: 'As Member',
+        description: 'Groups you joined',
+        icon: Icons.person,
+        isLast: false,
+        count: _memberGroupsCount,
+        isLoading: _isLoadingCounts,
+        onTap: () {
+          widget.onNavigateToGroups?.call(1);
+        },
+      ),
+      CategoryCard(
+        title: 'As Agent',
+        description: 'Groups you manage',
+        icon: Icons.admin_panel_settings,
+        isLast: true,
+        count: _agentGroupsCount,
+        isLoading: _isLoadingCounts,
+        onTap: () {
+          widget.onNavigateToGroups?.call(2);
+        },
+      ),
+    ];
   }
 
   Widget _buildNextPaymentsList() {
@@ -787,165 +940,165 @@ class _HomeScreenState extends State<HomeScreen> {
 
 }
 
-
-class GroupCard extends StatelessWidget {
+class CategoryCard extends StatelessWidget {
   final String title;
-  final String amount;
-  final String totalMembers;
+  final String description;
+  final IconData icon;
   final bool isLast;
-  final bool isSingle;
+  final VoidCallback? onTap;
+  final int? count;
+  final bool isLoading;
 
-  const GroupCard({
+  const CategoryCard({
     super.key,
     required this.title,
-    required this.amount,
-    required this.totalMembers,
+    required this.description,
+    required this.icon,
     this.isLast = false,
-    this.isSingle = false,
+    this.onTap,
+    this.count,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: isSingle
-          ? EdgeInsets.zero
-          : (isLast
-              ? const EdgeInsets.symmetric(horizontal: 20)
-              : const EdgeInsets.only(left: 20)),
-      width: double.infinity,
-      height: 180,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF5BBF7E), Color(0xFF3DA861)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3DA861).withOpacity(0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: isLast
+            ? const EdgeInsets.symmetric(horizontal: 20)
+            : const EdgeInsets.only(left: 20),
+        width: double.infinity,
+        height: 180,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF5BBF7E), Color(0xFF3DA861)],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            // Large decorative curved shape
-            Positioned(
-              right: -100,
-              top: -50,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Colors.white.withOpacity(0.15),
-                      Colors.white.withOpacity(0.05),
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                  ),
-                ),
-              ),
-            ),
-            // Additional subtle circles for depth
-            Positioned(
-              left: -60,
-              bottom: -80,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.08),
-                ),
-              ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Total Amount
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '\$ $amount',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black87,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'TOTAL AMOUNT',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      // Total Members
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            totalMembers,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'TOTAL MEMBER',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3DA861).withOpacity(0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              // Large decorative curved shape
+              Positioned(
+                right: -100,
+                top: -50,
+                child: Container(
+                  width: 300,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.15),
+                        Colors.white.withOpacity(0.05),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Additional subtle circles for depth
+              Positioned(
+                left: -60,
+                bottom: -80,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.08),
+                  ),
+                ),
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                            letterSpacing: -0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        isLoading
+                            ? const SizedBox(
+                                width: 215,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
+                                ),
+                              )
+                            : Text(
+                                count != null ? '$count Groups' : '0 Groups',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black87,
+                                  letterSpacing: -0.8,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                            letterSpacing: 0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: Colors.black87,
+                            size: 28,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
