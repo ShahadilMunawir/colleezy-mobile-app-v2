@@ -105,7 +105,7 @@ class CustomBottomNavBar extends StatelessWidget {
             Positioned(
               bottom: 2,
               child: Text(
-                '\$',
+                '₹',
                 style: TextStyle(
                   color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
                   fontSize: 12,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'chat_screen.dart';
 import '../services/api_service.dart';
 
 class MemberDetailsScreen extends StatefulWidget {
@@ -12,6 +11,8 @@ class MemberDetailsScreen extends StatefulWidget {
   final String memberInitial;
   final Color avatarColor;
   final bool currentUserIsAgent;
+  final int? initialYear; // Optional: Year to auto-select when opening transaction modal
+  final int? initialMonth; // Optional: Month to auto-select when opening transaction modal
 
   const MemberDetailsScreen({
     super.key,
@@ -22,6 +23,8 @@ class MemberDetailsScreen extends StatefulWidget {
     required this.memberInitial,
     required this.avatarColor,
     required this.currentUserIsAgent,
+    this.initialYear,
+    this.initialMonth,
   });
 
   @override
@@ -37,12 +40,30 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   double? _amountPerPeriod; // Store the group's amount_per_period
+  DateTime? _groupStartingDate; // Store the group's starting_date
+  DateTime? _selectedTransactionDate; // Will be set based on current month payment status
+  Set<String> _fullyCollectedMonths = {}; // Set of "YYYY-MM" strings for months fully collected
+  Set<String> _partialOnlyMonths = {}; // Set of "YYYY-MM" strings for months with only partial collections
 
   @override
   void initState() {
     super.initState();
     _loadGroupDetails();
     _loadTransactions();
+    
+    // If initialYear and initialMonth are provided, open the modal automatically
+    if (widget.initialYear != null && widget.initialMonth != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          // Wait a bit for group details to load before opening modal
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _showCollectNewModal(context);
+            }
+          });
+        }
+      });
+    }
   }
   
   Future<void> _loadGroupDetails() async {
@@ -50,8 +71,18 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       final group = await _apiService.getGroup(widget.groupId);
       if (group != null && mounted) {
         final amountPerPeriod = (group['amount_per_period'] as num?)?.toDouble();
+        final startingDateStr = group['starting_date'] as String?;
+        DateTime? startingDate;
+        if (startingDateStr != null) {
+          try {
+            startingDate = DateTime.parse(startingDateStr);
+          } catch (e) {
+            print('Error parsing starting_date: $e');
+          }
+        }
         setState(() {
           _amountPerPeriod = amountPerPeriod;
+          _groupStartingDate = startingDate;
         });
         // Auto-fill amount if "Collected" is selected
         if (_selectedStatus == 'collected' && amountPerPeriod != null) {
@@ -96,6 +127,155 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
         });
       }
     }
+  }
+
+  Future<void> _loadTransactionMonths() async {
+    try {
+      final monthsData = await _apiService.getMemberTransactionMonths(
+        groupId: widget.groupId,
+        memberUserId: widget.memberUserId,
+      );
+      
+      if (mounted) {
+        // Convert to sets of "YYYY-MM" strings for easy lookup
+        final fullyCollectedSet = (monthsData['fully_collected_months'] as List? ?? [])
+            .map((month) {
+              final year = month['year'] as int;
+              final monthNum = month['month'] as int;
+              return '${year}-${monthNum.toString().padLeft(2, '0')}';
+            }).toSet();
+        
+        final partialOnlySet = (monthsData['partial_only_months'] as List? ?? [])
+            .map((month) {
+              final year = month['year'] as int;
+              final monthNum = month['month'] as int;
+              return '${year}-${monthNum.toString().padLeft(2, '0')}';
+            }).toSet();
+        
+        setState(() {
+          _fullyCollectedMonths = fullyCollectedSet;
+          _partialOnlyMonths = partialOnlySet;
+          // Set default transaction date based on current month payment status and selected status
+          // Only set if not already set (to preserve user selection)
+          if (_selectedTransactionDate == null) {
+            _selectedTransactionDate = _getDefaultTransactionDate(status: _selectedStatus);
+          }
+        });
+      }
+    } catch (e) {
+      print('Error loading transaction months: $e');
+      // Don't show error to user, just log it
+    }
+  }
+  
+  // Check if the selected date's month only allows partial collections
+  bool _isPartialOnlyMonth(DateTime date) {
+    final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+    if (_partialOnlyMonths.contains(monthKey)) {
+      return true;
+    }
+    
+    // Also check if there are any partial transactions for this period
+    // This is a fallback in case the months data hasn't loaded yet
+    if (_groupStartingDate == null || _amountPerPeriod == null) {
+      return false;
+    }
+    
+    // Calculate period number for the selected date
+    final start = _groupStartingDate!;
+    int periodNumber;
+    
+    // For monthly groups, calculate period based on year and month difference
+    final yearDiff = date.year - start.year;
+    final monthDiff = date.month - start.month;
+    periodNumber = yearDiff * 12 + monthDiff + 1;
+    
+    // Check if there are any transactions for this period
+    bool hasPartialTransaction = false;
+    double totalCollected = 0.0;
+    
+    for (var transaction in _transactions) {
+      final periodNum = transaction['period_number'] as int?;
+      if (periodNum == periodNumber) {
+        final status = transaction['status'] as String?;
+        final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+        totalCollected += amount;
+        
+        // If there's a partial transaction, this month only allows partial payments
+        if (status == 'partially_collected') {
+          hasPartialTransaction = true;
+        }
+      }
+    }
+    
+    // If there are partial transactions and the period is not fully paid, only allow partial
+    if (hasPartialTransaction && totalCollected < _amountPerPeriod!) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  // Check if the current month is fully paid
+  bool _isCurrentMonthFullyPaid() {
+    final now = DateTime.now();
+    final monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    return _fullyCollectedMonths.contains(monthKey);
+  }
+  
+  // Get default transaction date based on payment status
+  // For "collected" (full payment): today if current month is not fully paid, null otherwise
+  // For "partially_collected": today if current month is not fully paid, null otherwise
+  DateTime? _getDefaultTransactionDate({String? status}) {
+    // If current month is fully paid, don't set default date
+    if (_isCurrentMonthFullyPaid()) {
+      return null;
+    }
+    // For "collected" status, show today as default if current month is not fully paid
+    if (status == 'collected' || status == null) {
+      return DateTime.now();
+    }
+    // For partial payments, also show today as default if current month is not fully paid
+    return DateTime.now();
+  }
+  
+  // Calculate total collected for the selected period/month
+  double _getTotalCollectedForPeriod(DateTime date) {
+    if (_groupStartingDate == null) return 0.0;
+    
+    // Calculate period number for the selected date
+    final start = _groupStartingDate!;
+    int periodNumber;
+    
+    // For monthly groups, calculate period based on year and month difference
+    final yearDiff = date.year - start.year;
+    final monthDiff = date.month - start.month;
+    periodNumber = yearDiff * 12 + monthDiff + 1;
+    
+    // Sum all transactions for this period
+    double total = 0.0;
+    for (var transaction in _transactions) {
+      final periodNum = transaction['period_number'] as int?;
+      if (periodNum == periodNumber) {
+        final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
+        total += amount;
+      }
+    }
+    
+    return total;
+  }
+  
+  // Calculate and update due amount based on current amount input
+  void _calculateDueAmount(String amountText, StateSetter setModalState) {
+    if (_amountPerPeriod == null || _selectedTransactionDate == null) return;
+    
+    final amount = double.tryParse(amountText.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+    final totalCollected = _getTotalCollectedForPeriod(_selectedTransactionDate!);
+    final due = _amountPerPeriod! - (totalCollected + amount);
+    
+    setModalState(() {
+      _dueController.text = due > 0 ? due.toStringAsFixed(2) : '0.00';
+    });
   }
 
   @override
@@ -329,21 +509,21 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
           final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
           final dueAmount = (transaction['due_amount'] as num?)?.toDouble() ?? 0.0;
           final status = transaction['status'] as String? ?? 'collected';
-          final createdAt = transaction['created_at'] as String?;
+          final transactionDate = transaction['transaction_date'] as String?;
           
-          // Format date
+          // Format date using transaction_date instead of created_at
           String formattedDate = 'Unknown date';
-          if (createdAt != null) {
+          if (transactionDate != null) {
             try {
-              final date = DateTime.parse(createdAt);
-              formattedDate = DateFormat('MMM d, yyyy h:mm a').format(date);
+              final date = DateTime.parse(transactionDate);
+              formattedDate = DateFormat('MMM d, yyyy').format(date);
             } catch (e) {
-              formattedDate = createdAt;
+              formattedDate = transactionDate;
             }
           }
           
           // Format amount
-          final formattedAmount = '\$${amount.toStringAsFixed(2)}';
+          final formattedAmount = '₹${amount.toStringAsFixed(2)}';
           
           // Determine if completed
           final isCompleted = status == 'collected' && dueAmount == 0;
@@ -410,7 +590,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                 if (dueAmount > 0) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Due: \$${dueAmount.toStringAsFixed(2)}',
+                    'Due: ₹${dueAmount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -438,24 +618,76 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   }
 
   void _showCollectNewModal(BuildContext context) {
+    // Load transaction months when opening modal first
+    _loadTransactionMonths();
+    
     // Reset form when opening modal
     setState(() {
-      _selectedStatus = 'collected';
-      if (_amountPerPeriod != null) {
+      // Set default transaction date
+      // If initialYear and initialMonth are provided, use them; otherwise use default logic
+      if (widget.initialYear != null && widget.initialMonth != null) {
+        // Use the provided year and month, set to first day of the month
+        _selectedTransactionDate = DateTime(widget.initialYear!, widget.initialMonth!, 1);
+        // When navigated from All Dues page, default to "partially_collected" since there's a due amount
+        _selectedStatus = 'partially_collected';
+      } else {
+        // Default to "collected" status for normal navigation
+        _selectedStatus = 'collected';
+        // Set default transaction date for "collected" status
+        // Show today if current month is not fully paid, else null
+        _selectedTransactionDate = _getDefaultTransactionDate(status: 'collected');
+      }
+      
+      // Check if the selected date's month only allows partial collections
+      final isPartialOnly = _selectedTransactionDate != null && _isPartialOnlyMonth(_selectedTransactionDate!);
+      
+      // If the month only allows partial collections, update status (unless already set from All Dues navigation)
+      if (isPartialOnly && widget.initialYear == null && widget.initialMonth == null) {
+        _selectedStatus = 'partially_collected';
+      }
+      
+      // Set amount field
+      if (_amountPerPeriod != null && _selectedStatus == 'collected' && !isPartialOnly) {
         _amountController.text = _amountPerPeriod!.toStringAsFixed(2);
+      } else if (_selectedStatus == 'partially_collected' && _selectedTransactionDate != null && _amountPerPeriod != null) {
+        // Auto-populate with remaining due amount for partial payments
+        final totalCollected = _getTotalCollectedForPeriod(_selectedTransactionDate!);
+        final remainingDue = _amountPerPeriod! - totalCollected;
+        if (remainingDue > 0) {
+          _amountController.text = remainingDue.toStringAsFixed(2);
+        } else {
+          _amountController.clear();
+        }
       } else {
         _amountController.clear();
       }
       _dueController.clear();
     });
     
+    // Calculate initial due amount if partial collection and amount is set
+    // Calculate due amount if status is partially_collected (either from All Dues navigation or partial-only month)
+    if (_selectedStatus == 'partially_collected' && _amountPerPeriod != null && _selectedTransactionDate != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          final amount = double.tryParse(_amountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+          final totalCollected = _getTotalCollectedForPeriod(_selectedTransactionDate!);
+          final due = _amountPerPeriod! - (totalCollected + amount);
+          _dueController.text = due > 0 ? due.toStringAsFixed(2) : '0.00';
+        }
+      });
+    }
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (BuildContext bottomSheetContext) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.9,
+              ),
               decoration: const BoxDecoration(
                 color: Color(0xFF171717),
                 borderRadius: BorderRadius.only(
@@ -463,10 +695,11 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                   topRight: Radius.circular(20),
                 ),
               ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                   // Drag handle
                   Container(
                     width: 40,
@@ -494,7 +727,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                         children: [
                           Text(
                             _selectedStatus == 'collected' && _amountPerPeriod != null && _amountController.text.isEmpty
-                                ? 'Collected (\$${_amountPerPeriod!.toStringAsFixed(2)})'
+                                ? 'Collected (₹${_amountPerPeriod!.toStringAsFixed(2)})'
                                 : _selectedStatus.replaceAll('_', ' ').split(' ').map((word) => 
                                     word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1)
                                   ).join(' '),
@@ -554,6 +787,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               fillColor: Color(0xFF232220),
                               contentPadding: EdgeInsets.zero,
                             ),
+                            onChanged: (value) {
+                              _calculateDueAmount(value, setModalState);
+                            },
                           ),
                         ),
                       ],
@@ -582,6 +818,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           ),
                           child: TextField(
                             controller: _dueController,
+                            readOnly: true,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -595,12 +832,186 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               filled: true,
                               fillColor: Color(0xFF232220),
                               contentPadding: EdgeInsets.zero,
+                              hintText: '0.00',
+                              hintStyle: TextStyle(
+                                color: Color(0xFFA5A5A5),
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ],
+                  const SizedBox(height: 20),
+                  // Transaction Date Picker
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Collection Date',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () async {
+                          // Helper function to check if a date is selectable
+                          // Disable dates in months that are fully collected
+                          bool isDateSelectable(DateTime date) {
+                            final monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+                            return !_fullyCollectedMonths.contains(monthKey);
+                          }
+                          
+                          final firstDate = _groupStartingDate ?? DateTime(2020);
+                          final lastDate = DateTime.now();
+                          
+                          // Find a valid initial date that satisfies the predicate
+                          DateTime? initialDate;
+                          
+                          // First, check if the currently selected date is selectable
+                          if (_selectedTransactionDate != null && isDateSelectable(_selectedTransactionDate!)) {
+                            initialDate = _selectedTransactionDate;
+                          } else {
+                            // Try to find a selectable date by going backwards from today
+                            DateTime candidate = lastDate;
+                            while (candidate.isAfter(firstDate) || candidate.isAtSameMomentAs(firstDate)) {
+                              if (isDateSelectable(candidate)) {
+                                initialDate = candidate;
+                                break;
+                              }
+                              candidate = candidate.subtract(const Duration(days: 1));
+                            }
+                            
+                            // If still no selectable date found, try going forward from firstDate
+                            if (initialDate == null) {
+                              candidate = firstDate;
+                              while (candidate.isBefore(lastDate) || candidate.isAtSameMomentAs(lastDate)) {
+                                if (isDateSelectable(candidate)) {
+                                  initialDate = candidate;
+                                  break;
+                                }
+                                candidate = candidate.add(const Duration(days: 1));
+                              }
+                            }
+                          }
+                          
+                          // If no selectable date exists, show an error message
+                          if (initialDate == null) {
+                            showDialog(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                backgroundColor: const Color(0xFF232220),
+                                title: const Text(
+                                  'No Available Dates',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                                content: const Text(
+                                  'All available months already have transactions recorded.',
+                                  style: TextStyle(
+                                    color: Color(0xFFA5A5A5),
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(dialogContext).pop(),
+                                    child: const Text(
+                                      'OK',
+                                      style: TextStyle(
+                                        color: Color(0xFF2D7A4F),
+                                        fontFamily: 'DM Sans',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                            return;
+                          }
+                          
+                          final DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: initialDate,
+                            firstDate: firstDate,
+                            lastDate: lastDate,
+                            selectableDayPredicate: isDateSelectable,
+                            builder: (context, child) {
+                              return Theme(
+                                data: Theme.of(context).copyWith(
+                                  colorScheme: const ColorScheme.dark(
+                                    primary: Color(0xFF2D7A4F),
+                                    onPrimary: Colors.white,
+                                    surface: Color(0xFF171717),
+                                    onSurface: Colors.white,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null) {
+                            setModalState(() {
+                              _selectedTransactionDate = picked;
+                              // If the selected month only allows partial collections, restrict status
+                              if (_isPartialOnlyMonth(picked)) {
+                                _selectedStatus = 'partially_collected';
+                                // Auto-populate amount with remaining due for partial payments
+                                if (_amountPerPeriod != null) {
+                                  final totalCollected = _getTotalCollectedForPeriod(picked);
+                                  final remainingDue = _amountPerPeriod! - totalCollected;
+                                  if (remainingDue > 0) {
+                                    _amountController.text = remainingDue.toStringAsFixed(2);
+                                  } else {
+                                    _amountController.clear();
+                                  }
+                                }
+                              }
+                              // Recalculate due amount when date changes
+                              if (_selectedStatus == 'partially_collected' && _amountController.text.isNotEmpty) {
+                                _calculateDueAmount(_amountController.text, setModalState);
+                              }
+                            });
+                          }
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF232220),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _selectedTransactionDate != null
+                                    ? DateFormat('MMM d, yyyy').format(_selectedTransactionDate!)
+                                    : 'Select date',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: _selectedTransactionDate != null ? Colors.white : const Color(0xFFA5A5A5),
+                                  fontFamily: 'DM Sans',
+                                ),
+                              ),
+                              const Icon(
+                                Icons.calendar_today,
+                                color: Color(0xFFA5A5A5),
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 30),
                   // Save button
                   SizedBox(
@@ -660,19 +1071,65 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           }
                         }
                         
-                        // Get due amount if partially collected
+                        // Get due amount if partially collected (auto-calculated)
                         double? dueAmount;
                         if (_selectedStatus == 'partially_collected') {
-                          if (_dueController.text.trim().isEmpty) {
+                          // Due amount is auto-calculated, so get it from the controller
+                          dueAmount = double.tryParse(_dueController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+                          // Ensure due amount is not negative
+                          if (dueAmount < 0) {
+                            dueAmount = 0.0;
+                          }
+                        }
+                        
+                        // Validate transaction date
+                        // Validate that a date is selected
+                        if (_selectedTransactionDate == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please select a collection date'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        final today = DateTime.now();
+                        final todayDate = DateTime(today.year, today.month, today.day);
+                        final selectedDate = DateTime(_selectedTransactionDate!.year, _selectedTransactionDate!.month, _selectedTransactionDate!.day);
+                        
+                        if (selectedDate.isAfter(todayDate)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Transaction date cannot be in the future'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+                        
+                        if (_groupStartingDate != null) {
+                          final startDate = DateTime(_groupStartingDate!.year, _groupStartingDate!.month, _groupStartingDate!.day);
+                          if (selectedDate.isBefore(startDate)) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please enter due amount for partially collected'),
+                              SnackBar(
+                                content: Text('Transaction date cannot be before group start date (${DateFormat('MMM d, yyyy').format(_groupStartingDate!)})'),
                                 backgroundColor: Colors.red,
                               ),
                             );
                             return;
                           }
-                          dueAmount = double.tryParse(_dueController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+                        }
+                        
+                        // Validate that "collected" status is not used for partial-only months
+                        if (_selectedStatus == 'collected' && _selectedTransactionDate != null && _isPartialOnlyMonth(_selectedTransactionDate!)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('This month only allows partial collections. Please select "Partially Collected" instead.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
                         }
                         
                         // Show loading
@@ -699,6 +1156,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                             amount: amount,
                             dueAmount: dueAmount,
                             status: status,
+                            transactionDate: _selectedTransactionDate,
                           );
                           
                           // Close loading and modal
@@ -725,8 +1183,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               _selectedStatus = 'collected';
                             });
                             
-                            // Refresh transactions
+                            // Refresh transactions and transaction months
                             _loadTransactions();
+                            _loadTransactionMonths();
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -737,19 +1196,34 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               );
                             }
                           }
-                        } catch (e) {
-                          // Close loading
-                          if (mounted) Navigator.pop(context);
-                          
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error: ${e.toString()}'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                          } catch (e) {
+                            // Close loading
+                            if (mounted) {
+                              Navigator.pop(context); // Close loading
+                            }
+                            
+                            // Parse error message from API response if available
+                            String errorMessage = 'Error creating transaction';
+                            final errorStr = e.toString();
+                            if (errorStr.contains('Transaction for period')) {
+                              errorMessage = 'A transaction for this period already exists';
+                            } else if (errorStr.contains('cannot be in the future')) {
+                              errorMessage = 'Transaction date cannot be in the future';
+                            } else if (errorStr.contains('cannot be before group start date')) {
+                              errorMessage = 'Transaction date cannot be before group start date';
+                            } else if (errorStr.isNotEmpty) {
+                              errorMessage = errorStr;
+                            }
+                            
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(errorMessage),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
-                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2D7A4F),
@@ -770,6 +1244,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                     ),
                   ),
                 ],
+                ),
               ),
             );
           },
@@ -779,6 +1254,14 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   }
 
   void _showDropdownOptions(BuildContext context, StateSetter setModalState) {
+    // Check if the selected month only allows partial collections
+    // If no date is selected, check the default date (today's date)
+    DateTime? dateToCheck = _selectedTransactionDate;
+    if (dateToCheck == null) {
+      dateToCheck = _getDefaultTransactionDate();
+    }
+    final isPartialOnly = dateToCheck != null && _isPartialOnlyMonth(dateToCheck);
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -803,7 +1286,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              _buildDropdownOption('Collected', setModalState, context),
+              // Only show "Collected" option if the month doesn't have partial-only restrictions
+              if (!isPartialOnly)
+                _buildDropdownOption('Collected', setModalState, context),
               _buildDropdownOption('Partially Collected', setModalState, context),
               const SizedBox(height: 8),
             ],
@@ -820,9 +1305,38 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   ) {
     return InkWell(
       onTap: () {
+        final newStatus = option.toLowerCase().replaceAll(' ', '_');
         setState(() {
-          _selectedStatus = option.toLowerCase().replaceAll(' ', '_');
+          _selectedStatus = newStatus;
         });
+        
+        // Update default transaction date based on new status
+        // For "collected": show today if current month is not fully paid, else null
+        if (newStatus == 'collected') {
+          setModalState(() {
+            _selectedTransactionDate = _getDefaultTransactionDate(status: 'collected');
+            _dueController.clear();
+          });
+        } else if (newStatus == 'partially_collected') {
+          setModalState(() {
+            _selectedTransactionDate = _getDefaultTransactionDate(status: 'partially_collected');
+            // Auto-populate amount with remaining due for partial payments
+            if (_selectedTransactionDate != null && _amountPerPeriod != null) {
+              final totalCollected = _getTotalCollectedForPeriod(_selectedTransactionDate!);
+              final remainingDue = _amountPerPeriod! - totalCollected;
+              if (remainingDue > 0) {
+                _amountController.text = remainingDue.toStringAsFixed(2);
+              } else {
+                _amountController.clear();
+              }
+            }
+            // Calculate due amount
+            if (_amountController.text.isNotEmpty && _selectedTransactionDate != null) {
+              _calculateDueAmount(_amountController.text, setModalState);
+            }
+          });
+        }
+        
         setModalState(() {});
         Navigator.pop(context);
       },

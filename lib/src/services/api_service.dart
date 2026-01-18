@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:colleezy/app.dart';
 
 class ApiService {
   // Get base URL from environment variables
@@ -110,6 +112,40 @@ class ApiService {
     
     return headers;
   }
+
+  /// Handle 401 Unauthorized response by logging out the user
+  Future<void> _handleUnauthorized() async {
+    print('Token expired or invalid. Logging out user...');
+    try {
+      // Clear the token
+      await clearToken();
+      
+      // Sign out from Firebase and Google Sign In
+      await Future.wait([
+        FirebaseAuth.instance.signOut(),
+        GoogleSignIn().signOut(),
+      ]);
+      
+      // Navigate to login screen
+      if (navigatorKey.currentContext != null) {
+        navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          '/login',
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      print('Error during automatic logout: $e');
+    }
+  }
+
+  /// Check response status and handle 401 Unauthorized
+  bool _checkResponseStatus(http.Response response, {bool shouldHandle401 = true}) {
+    if (response.statusCode == 401 && shouldHandle401) {
+      _handleUnauthorized();
+      return false;
+    }
+    return true;
+  }
   
   /// Create or update a user in the backend after Firebase authentication
   Future<Map<String, dynamic>?> createUserFromFirebase(User firebaseUser) async {
@@ -188,6 +224,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/auth/me');
       final response = await http.get(url, headers: await _getHeaders());
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -239,6 +279,10 @@ class ApiService {
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -293,13 +337,13 @@ class ApiService {
         body: jsonEncode(body),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 200) {
         print('User updated successfully: ${response.body}');
         return jsonDecode(response.body) as Map<String, dynamic>;
-      } else if (response.statusCode == 401) {
-        print('Authentication failed (401). Token may be invalid or expired.');
-        print('Response: ${response.body}');
-        return null;
       } else {
         print('Failed to update user: ${response.statusCode} - ${response.body}');
         return null;
@@ -315,6 +359,10 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/users/$userId');
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -377,6 +425,10 @@ class ApiService {
         body: jsonEncode(body),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 201) {
         print('Group created successfully: ${response.body}');
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -396,6 +448,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/kuri-groups');
       final response = await http.get(url, headers: await _getHeaders());
       
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         return data.cast<Map<String, dynamic>>();
@@ -412,6 +468,10 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId');
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -433,6 +493,10 @@ class ApiService {
         body: jsonEncode(data),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 200) {
         print('Group updated successfully: ${response.body}');
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -451,6 +515,10 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members');
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
@@ -494,6 +562,10 @@ class ApiService {
         body: jsonEncode(body),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 201) {
         print('Member added successfully: ${response.body}');
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -519,6 +591,10 @@ class ApiService {
         url,
         headers: await _getHeaders(),
       );
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
       
       if (response.statusCode == 200) {
         print('Member made agent successfully: ${response.body}');
@@ -546,6 +622,10 @@ class ApiService {
         headers: await _getHeaders(),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return false;
+      }
+      
       if (response.statusCode == 200) {
         print('Member removed successfully: ${response.body}');
         return true;
@@ -559,6 +639,42 @@ class ApiService {
     }
   }
   
+  /// Assign an existing member to an agent
+  Future<Map<String, dynamic>?> assignMemberToAgent({
+    required int groupId,
+    required int memberUserId,
+    required int agentId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members/$memberUserId/assign-agent');
+      
+      final body = <String, dynamic>{
+        'agent_id': agentId,
+      };
+      
+      final response = await http.patch(
+        url,
+        headers: await _getHeaders(),
+        body: jsonEncode(body),
+      );
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
+      if (response.statusCode == 200) {
+        print('Member assigned to agent successfully: ${response.body}');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        print('Failed to assign member to agent: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error assigning member to agent: $e');
+      return null;
+    }
+  }
+  
   /// Get transactions for a member in a group
   Future<List<Map<String, dynamic>>> getMemberTransactions({
     required int groupId,
@@ -567,6 +683,10 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members/$memberUserId/transactions');
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
@@ -579,6 +699,43 @@ class ApiService {
     }
   }
   
+  /// Get months that have transactions for a member in a group
+  /// Returns a map with 'fully_collected_months', 'partial_only_months', and 'full_collection_months'
+  Future<Map<String, dynamic>> getMemberTransactionMonths({
+    required int groupId,
+    required int memberUserId,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members/$memberUserId/transactions/months');
+      final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return {
+          'fully_collected_months': [],
+          'partial_only_months': [],
+          'full_collection_months': []
+        };
+      }
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data;
+      }
+      return {
+        'fully_collected_months': [],
+        'partial_only_months': [],
+        'full_collection_months': []
+      };
+    } catch (e) {
+      print('Error getting member transaction months: $e');
+      return {
+        'fully_collected_months': [],
+        'partial_only_months': [],
+        'full_collection_months': []
+      };
+    }
+  }
+  
   /// Create a new transaction (collect money from a member)
   Future<Map<String, dynamic>?> createTransaction({
     required int groupId,
@@ -588,6 +745,7 @@ class ApiService {
     required String status, // 'collected', 'partially_collected', 'pending'
     int? periodNumber,
     String? notes,
+    DateTime? transactionDate,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId/members/$memberUserId/transactions');
@@ -606,12 +764,20 @@ class ApiService {
       if (notes != null && notes.isNotEmpty) {
         body['notes'] = notes;
       }
+      if (transactionDate != null) {
+        // Format date as YYYY-MM-DD
+        body['transaction_date'] = '${transactionDate.year}-${transactionDate.month.toString().padLeft(2, '0')}-${transactionDate.day.toString().padLeft(2, '0')}';
+      }
       
       final response = await http.post(
         url,
         headers: await _getHeaders(),
         body: jsonEncode(body),
       );
+      
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
       
       if (response.statusCode == 201) {
         print('Transaction created successfully: ${response.body}');
@@ -651,6 +817,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/transactions').replace(queryParameters: queryParams.isEmpty ? null : queryParams);
       
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
@@ -692,6 +862,10 @@ class ApiService {
         body: jsonEncode(body),
       );
       
+      if (!_checkResponseStatus(response)) {
+        return null;
+      }
+      
       if (response.statusCode == 201) {
         print('Draw created successfully: ${response.body}');
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -705,11 +879,59 @@ class ApiService {
     }
   }
   
+  /// Get all due amounts for the current user across all groups
+  Future<List<Map<String, dynamic>>> getUserDueAmounts() async {
+    try {
+      final url = Uri.parse('$baseUrl/transactions/due-amounts');
+      final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        return data.cast<Map<String, dynamic>>();
+      }
+      print('Failed to get due amounts: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      print('Error getting due amounts: $e');
+      return [];
+    }
+  }
+  
+  /// Get all due amounts for all members in groups where the user is an agent or owner
+  Future<List<Map<String, dynamic>>> getAllMembersDueAmounts() async {
+    try {
+      final url = Uri.parse('$baseUrl/transactions/all-members-due-amounts');
+      final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        return data.cast<Map<String, dynamic>>();
+      }
+      print('Failed to get all members due amounts: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      print('Error getting all members due amounts: $e');
+      return [];
+    }
+  }
+  
   /// Get all draws/winners for groups where the current user is a member
   Future<List<Map<String, dynamic>>> getAllDraws() async {
     try {
       final url = Uri.parse('$baseUrl/draws');
       final response = await http.get(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
@@ -729,6 +951,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/kuri-groups/$groupId/draws');
       final response = await http.get(url, headers: await _getHeaders());
       
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         return data.cast<Map<String, dynamic>>();
@@ -747,6 +973,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/notifications');
       final response = await http.get(url, headers: await _getHeaders());
       
+      if (!_checkResponseStatus(response)) {
+        return [];
+      }
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as List;
         return data.cast<Map<String, dynamic>>();
@@ -764,6 +994,10 @@ class ApiService {
       final url = Uri.parse('$baseUrl/notifications/$notificationId/read');
       final response = await http.put(url, headers: await _getHeaders());
       
+      if (!_checkResponseStatus(response)) {
+        return false;
+      }
+      
       if (response.statusCode == 200) {
         return true;
       }
@@ -779,6 +1013,10 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/notifications/read-all');
       final response = await http.put(url, headers: await _getHeaders());
+      
+      if (!_checkResponseStatus(response)) {
+        return 0;
+      }
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as int;

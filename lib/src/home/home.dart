@@ -231,13 +231,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // Get all transactions for this group (we'll get transactions for current user)
         final allTransactions = await _apiService.getAllTransactions(groupId: groupId);
         if (allTransactions.isNotEmpty) {
-          // Find the most recent transaction date
+          // Find the most recent transaction date (using transaction_date)
           DateTime? mostRecentDate;
           for (var transaction in allTransactions) {
-            final createdAt = transaction['created_at'] as String?;
-            if (createdAt != null) {
+            final transactionDateStr = transaction['transaction_date'] as String?;
+            if (transactionDateStr != null) {
               try {
-                final transactionDate = DateTime.parse(createdAt);
+                final transactionDate = DateTime.parse(transactionDateStr);
                 if (mostRecentDate == null || transactionDate.isAfter(mostRecentDate)) {
                   mostRecentDate = transactionDate;
                 }
@@ -439,7 +439,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ProfileScreen(),
+                                builder: (context) => const ProfileScreen(
+                                  showBackButton: true,
+                                ),
                               ),
                             );
                             // Refresh user info when returning from profile screen

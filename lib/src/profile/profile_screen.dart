@@ -5,7 +5,12 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool showBackButton;
+  
+  const ProfileScreen({
+    super.key,
+    this.showBackButton = false,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -99,31 +104,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _isLoading = true;
     });
 
-    // Get Firebase user info
+    // Get Firebase user info as fallback
     final firebaseUser = _authService.currentUser;
     String? photoUrl = firebaseUser?.photoURL;
     String? displayName = firebaseUser?.displayName;
     String? email = firebaseUser?.email;
     String? phone = firebaseUser?.phoneNumber;
 
-    // Get backend user info
+    // Get backend user info - prioritize backend data as source of truth
     try {
       final backendUser = await _apiService.getCurrentUser();
       if (backendUser != null) {
+        // Always use backend data if available, only fall back to Firebase if backend data is null/empty
         final backendName = backendUser['name'] as String?;
         final backendEmail = backendUser['email'] as String?;
         final backendPhone = backendUser['phone'] as String?;
         final backendPhotoUrl = backendUser['photo_url'] as String?;
         
-        if (backendName != null && backendName.isNotEmpty) {
-          displayName = backendName;
-        }
-        if (backendEmail != null && backendEmail.isNotEmpty) {
-          email = backendEmail;
-        }
-        if (backendPhone != null && backendPhone.isNotEmpty) {
-          phone = backendPhone;
-        }
+        // Use backend data if available, otherwise keep Firebase data
+        displayName = (backendName != null && backendName.isNotEmpty) ? backendName : displayName;
+        email = (backendEmail != null && backendEmail.isNotEmpty) ? backendEmail : email;
+        phone = (backendPhone != null && backendPhone.isNotEmpty) ? backendPhone : phone;
+        
         if (backendPhotoUrl != null && backendPhotoUrl.isNotEmpty) {
           // Convert relative URL to full URL if needed
           if (backendPhotoUrl.startsWith('/')) {
@@ -135,6 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       print('Error loading backend user info: $e');
+      // Continue with Firebase data if backend fails
     }
 
     // Set initial for avatar
@@ -337,33 +340,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (result != null && mounted) {
-        // Update initial if name changed
-        final name = _nameController.text.trim();
-        if (name.isNotEmpty) {
-          final parts = name.split(' ');
-          if (parts.length >= 2) {
-            setState(() {
-              _initial = (parts[0][0] + parts[1][0]).toUpperCase();
-            });
-          } else {
-            setState(() {
-              _initial = name[0].toUpperCase();
-            });
-          }
-        }
-
-        // Update photo URL if uploaded
-        if (photoUrl != null) {
-          // Convert relative URL to full URL if needed
-          String fullPhotoUrl = photoUrl;
-          if (photoUrl.startsWith('/')) {
-            fullPhotoUrl = '${ApiService.baseUrl.replaceAll('/api/v1', '')}$photoUrl';
-          }
-          setState(() {
-            _userPhotoUrl = fullPhotoUrl;
-            _selectedImage = null; // Clear selected image after successful upload
-          });
-        }
+        // Reload user data from backend to ensure we have the latest saved data
+        await _loadUserData();
+        
+        setState(() {
+          _isSaving = false;
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -395,6 +377,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       print('Error saving profile: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving profile: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _isSaving = false;
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -437,7 +430,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              // Back Button (only shown when navigated from home screen)
+              if (widget.showBackButton) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ] else
+                const SizedBox(height: 40),
               // Avatar Section
               Stack(
                 alignment: Alignment.center,
@@ -532,7 +552,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               // Email Field
                               _buildInputField(
                                 icon: Icons.email,
-                                label: 'Email',
+                                label: 'Email (optional)',
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                               ),

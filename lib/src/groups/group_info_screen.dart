@@ -183,7 +183,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           // Total Amount - Featured
           _buildFeaturedCard(
             title: 'Total Amount',
-            value: '\$${totalAmount.toStringAsFixed(2)}',
+            value: '₹${totalAmount.toStringAsFixed(2)}',
           ),
           const SizedBox(height: 24),
           // Section Title
@@ -202,7 +202,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           // Details Grid
           _buildDetailItem(
             label: 'Amount Per Period',
-            value: '\$${amountPerPeriod.toStringAsFixed(2)}',
+            value: '₹${amountPerPeriod.toStringAsFixed(2)}',
           ),
           if (duration != null)
             _buildDetailItem(
@@ -224,7 +224,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               label: 'Commission',
               value: commissionType == 'percentage'
                   ? '${commissionValue.toStringAsFixed(1)}%'
-                  : '\$${commissionValue.toStringAsFixed(2)}',
+                  : '₹${commissionValue.toStringAsFixed(2)}',
               subtitle: commissionType == 'percentage' ? 'Percentage' : 'Fixed Amount',
             ),
           ],
@@ -232,7 +232,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
             const SizedBox(height: 8),
             _buildDetailItem(
               label: 'Final Kuri Amount',
-              value: '\$${finalKuriAmount.toStringAsFixed(2)}',
+              value: '₹${finalKuriAmount.toStringAsFixed(2)}',
               subtitle: hasCommission && commissionValue != null
                   ? 'After commission'
                   : null,

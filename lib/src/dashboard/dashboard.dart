@@ -16,6 +16,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   final ValueNotifier<int> _groupsRefreshTrigger = ValueNotifier<int>(0);
   int _groupsInitialTab = 0;
+  VoidCallback? _historyRefreshCallback;
 
   List<Widget> get _pages => [
     HomeScreen(
@@ -32,7 +33,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       initialTab: _groupsInitialTab,
     ),
     const DrawSelectionScreen(),
-    const HistoryScreen(),
+    HistoryScreen(
+      onVisible: (callback) {
+        _historyRefreshCallback = callback;
+      },
+    ),
   ];
 
   void _onItemSelected(int index) {
@@ -43,32 +48,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (index == 1) {
       _groupsRefreshTrigger.value++;
     }
+    // Trigger history refresh when navigating to history tab
+    if (index == 3) {
+      _historyRefreshCallback?.call();
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Exit App'),
+        content: const Text('Are you sure you want to exit the app?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          IndexedStack(
-            index: _selectedIndex,
-            children: _pages,
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 20,
-            child: Center(
-              child: SizedBox(
-                width: 300,
-                child: CustomBottomNavBar(
-                  selectedIndex: _selectedIndex,
-                  onItemSelected: _onItemSelected,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: _selectedIndex,
+              children: _pages,
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 20,
+              child: Center(
+                child: SizedBox(
+                  width: 300,
+                  child: CustomBottomNavBar(
+                    selectedIndex: _selectedIndex,
+                    onItemSelected: _onItemSelected,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

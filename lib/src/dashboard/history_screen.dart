@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import 'all_dues_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final Function(VoidCallback)? onVisible;
+
+  const HistoryScreen({super.key, this.onVisible});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -24,6 +27,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _loadData();
+    // Register refresh callback with parent
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onVisible?.call(refreshData);
+    });
+  }
+
+  @override
+  void didUpdateWidget(HistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-register callback if it changed
+    if (widget.onVisible != oldWidget.onVisible) {
+      widget.onVisible?.call(refreshData);
+    }
+  }
+
+  /// Public method to refresh data - called when navigating to this screen
+  Future<void> refreshData() async {
+    await _loadData();
   }
 
   Future<void> _loadData() async {
@@ -76,13 +97,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
 
       if (mounted) {
-        // Extract unique dates and sort them
+        // Extract unique dates and sort them (using transaction_date)
         final dates = transactions
             .map((t) {
-              final createdAt = t['created_at'] as String?;
-              if (createdAt != null) {
+              final transactionDate = t['transaction_date'] as String?;
+              if (transactionDate != null) {
                 try {
-                  final date = DateTime.parse(createdAt);
+                  final date = DateTime.parse(transactionDate);
                   return DateFormat('MMM d, yyyy').format(date);
                 } catch (e) {
                   return null;
@@ -120,18 +141,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+
   List<Map<String, dynamic>> get _filteredTransactions {
     List<Map<String, dynamic>> filtered = List.from(_allTransactions);
 
-    // Filter by date
+    // Filter by date (using transaction_date)
     if (_selectedDate != null && _selectedDate != 'All Dates') {
       try {
         final selectedDate = DateFormat('MMM d, yyyy').parse(_selectedDate!);
         filtered = filtered.where((t) {
-          final createdAt = t['created_at'] as String?;
-          if (createdAt != null) {
+          final transactionDateStr = t['transaction_date'] as String?;
+          if (transactionDateStr != null) {
             try {
-              final transactionDate = DateTime.parse(createdAt);
+              final transactionDate = DateTime.parse(transactionDateStr);
               return DateFormat('yyyy-MM-dd').format(transactionDate) ==
                   DateFormat('yyyy-MM-dd').format(selectedDate);
             } catch (e) {
@@ -152,10 +174,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }).toList();
     }
 
-    // Sort by date (most recent first)
+    // Sort by date (most recent first, using transaction_date)
     filtered.sort((a, b) {
-      final dateA = a['created_at'] as String?;
-      final dateB = b['created_at'] as String?;
+      final dateA = a['transaction_date'] as String?;
+      final dateB = b['transaction_date'] as String?;
       if (dateA != null && dateB != null) {
         try {
           return DateTime.parse(dateB).compareTo(DateTime.parse(dateA));
@@ -173,10 +195,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final grouped = <String, List<Map<String, dynamic>>>{};
     
     for (var transaction in _filteredTransactions) {
-      final createdAt = transaction['created_at'] as String?;
-      if (createdAt != null) {
+      final transactionDateStr = transaction['transaction_date'] as String?;
+      if (transactionDateStr != null) {
         try {
-          final date = DateTime.parse(createdAt);
+          final date = DateTime.parse(transactionDateStr);
           final dateKey = DateFormat('MMMM d, yyyy').format(date);
           
           if (!grouped.containsKey(dateKey)) {
@@ -223,13 +245,42 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: const Text(
-                        'History',
-                        style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                          color: Color(0xFFEFEEEC),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'History',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFEFEEEC),
+                      ),
                     ),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllDuesScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.people_outline,
+                        color: Color(0xFF2D7A4F),
+                        size: 20,
+                      ),
+                      label: const Text(
+                        'All Dues',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF2D7A4F),
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -399,7 +450,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadTransactions,
+              onPressed: () {
+                _loadTransactions();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2D7A4F),
               ),
@@ -447,7 +500,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadTransactions,
+      onRefresh: () async {
+        await _loadTransactions();
+      },
       color: const Color(0xFF2D7A4F),
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -541,7 +596,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 if (dueAmount > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Due: \$${dueAmount.toStringAsFixed(2)}',
+                    'Due: ₹${dueAmount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -557,7 +612,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${amount.toStringAsFixed(2)}',
+                '₹${amount.toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -590,4 +645,5 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
     );
   }
+
 }

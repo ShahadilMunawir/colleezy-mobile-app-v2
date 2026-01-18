@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'chat_screen.dart';
 import 'member_details.dart';
 import 'group_info_screen.dart';
 import 'agent_members_screen.dart';
@@ -129,12 +128,20 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   List<Map<String, dynamic>> get _displayedMembers {
+    // Filter out owners (owners with member_number == null should not appear in members tab)
+    final membersWithoutOwners = _allMembers.where((member) {
+      final isOwner = member['is_owner'] as bool? ?? false;
+      final memberNumber = member['member_number'] as int?;
+      // Exclude owners who are not members (member_number == null)
+      return !(isOwner && memberNumber == null);
+    }).toList();
+    
     if (_selectedTab == 0) {
-      // Show all members
-      return _allMembers;
+      // Show all members (excluding owner-only entries)
+      return membersWithoutOwners;
     } else {
       // Show only agents
-      return _allMembers.where((member) => member['is_agent'] == true).toList();
+      return membersWithoutOwners.where((member) => member['is_agent'] == true).toList();
     }
   }
 
@@ -935,11 +942,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     final Map<Contact, bool> selectedContacts = {};
     _Country selectedCountry = _countries[2]; // Default to India
     String contactSearchQuery = '';
-    int? selectedAgentId; // Track selected agent
-    
-    // Get list of agents from current members
-    final agents = _allMembers.where((member) => member['is_agent'] == true).toList();
-    
     // Capture the parent scaffold messenger for showing SnackBars above the modal
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     
@@ -1160,102 +1162,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          // Agent Selection Dropdown
-                          if (agents.isNotEmpty) ...[
-                            const Text(
-                              'Assign to Agent',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                fontFamily: 'DM Sans',
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF474540),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int?>(
-                                  value: selectedAgentId,
-                                  isExpanded: true,
-                                  dropdownColor: const Color(0xFF474540),
-                                  icon: const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: Color(0xFFA5A5A5),
-                                  ),
-                                  hint: const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 16),
-                                    child: Text(
-                                      'Select an agent',
-                                      style: TextStyle(
-                                        color: Color(0xFFA5A5A5),
-                                        fontFamily: 'DM Sans',
-                                      ),
-                                    ),
-                                  ),
-                                  items: agents.map((agent) {
-                                    final agentUserId = agent['user_id'] as int;
-                                    final agentName = agent['user_name'] as String? ?? 
-                                                      _extractNameFromEmail(agent['user_email'] as String? ?? 'Unknown');
-                                    return DropdownMenuItem<int?>(
-                                      value: agentUserId,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                        child: Text(
-                                          agentName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'DM Sans',
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setModalState(() {
-                                      selectedAgentId = value;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                          ] else ...[
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.only(bottom: 24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2D7A4F).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: const Color(0xFF2D7A4F).withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.info_outline_rounded,
-                                    color: Color(0xFF2D7A4F),
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: const Text(
-                                      'This will be the first member. They will be automatically promoted to an agent.',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontFamily: 'DM Sans',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                           // Separator with "Or"
                           Row(
                             children: [
@@ -1460,12 +1366,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             return;
                           }
                           
-                          // Validate agent selection if agents exist
-                          if (agents.isNotEmpty && selectedAgentId == null) {
-                            showErrorToast('Please select an agent to assign this member to');
-                            return;
-                          }
-                          
                           // If manual entry, validate both name and phone are present
                           if (isManualEntry) {
                             if (name.isEmpty) {
@@ -1523,7 +1423,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                     groupId: widget.groupId,
                                     phone: formattedPhone,
                                     name: contactName,
-                                    agentId: selectedAgentId,
                                   );
                                   
                                   if (result != null) {
@@ -1548,7 +1447,6 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                                 groupId: widget.groupId,
                                 phone: formattedPhone,
                                 name: name,
-                                agentId: selectedAgentId,
                               );
                               
                               if (result != null) {

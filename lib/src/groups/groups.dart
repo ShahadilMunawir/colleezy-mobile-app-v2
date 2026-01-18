@@ -83,19 +83,29 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   List<Map<String, dynamic>> get _displayedGroups {
+    if (_currentUserId == null) return [];
+    
     if (_selectedTab == 0) {
-      // Show all groups
-      return _allGroups;
+      // Show groups where current user is owner (created_by_id matches current user)
+      return _allGroups.where((group) {
+        final createdById = group['created_by_id'] as int?;
+        return createdById == _currentUserId;
+      }).toList();
     } else if (_selectedTab == 1) {
-      // Show groups where user is a member (not an agent)
+      // Show groups where user is a member (not an agent) AND user is not the owner
       return _allGroups.where((group) {
         final groupId = group['id'] as int;
+        final createdById = group['created_by_id'] as int?;
+        // Exclude groups where user is the owner
+        if (createdById == _currentUserId) return false;
+        // Show only groups where user is a member but not an agent
         return _userIsAgentInGroup[groupId] == false;
       }).toList();
     } else {
-      // Show groups where user is an agent
+      // Show groups where user is an agent (including groups where user is owner and agent)
       return _allGroups.where((group) {
         final groupId = group['id'] as int;
+        // Show groups where user is an agent (can be owner or not)
         return _userIsAgentInGroup[groupId] == true;
       }).toList();
     }
@@ -173,7 +183,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: _buildTab('Groups', 0),
+                          child: _buildTab('My Groups', 0),
                         ),
                         Expanded(
                           child: _buildTab('As Members', 1),
@@ -237,7 +247,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
     if (displayedGroups.isEmpty) {
       String emptyMessage;
       if (_selectedTab == 0) {
-        emptyMessage = 'No groups yet';
+        emptyMessage = 'No groups created yet';
       } else if (_selectedTab == 1) {
         emptyMessage = 'No groups as member';
       } else {

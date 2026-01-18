@@ -15,9 +15,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _groupNameController = TextEditingController();
   final _startingDateController = TextEditingController();
   final _totalAmountController = TextEditingController();
-  final _individualPaymentController = TextEditingController();
   final _durationController = TextEditingController();
-  final _amountPerPeriodController = TextEditingController();
+  final _individualAmountController = TextEditingController(); // Read-only, calculated field
   final _percentageController = TextEditingController();
   final _cashCommissionController = TextEditingController();
   String _collectPeriod = 'Monthly';
@@ -32,9 +31,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     _groupNameController.dispose();
     _startingDateController.dispose();
     _totalAmountController.dispose();
-    _individualPaymentController.dispose();
     _durationController.dispose();
-    _amountPerPeriodController.dispose();
+    _individualAmountController.dispose();
     _percentageController.dispose();
     _cashCommissionController.dispose();
     super.dispose();
@@ -67,31 +65,31 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return 'Amount must be greater than 0';
     }
     if (amount > 1000000) {
-      return 'Amount cannot exceed \$1,000,000';
+      return 'Amount cannot exceed ₹1,000,000';
     }
+    // Recalculate individual amount when total amount changes
+    _calculateIndividualAmount();
     return null;
   }
 
-  String? _validateIndividualPayment(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Individual payment is required';
-    }
-    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
-    if (amount == null) {
-      return 'Please enter a valid amount';
-    }
-    if (amount <= 0) {
-      return 'Payment must be greater than 0';
-    }
-    // Check against total amount if set
+  // Calculate individual amount based on total amount and duration
+  void _calculateIndividualAmount() {
     final totalText = _totalAmountController.text;
-    if (totalText.isNotEmpty) {
+    final durationText = _durationController.text;
+    
+    if (totalText.isNotEmpty && durationText.isNotEmpty) {
       final totalAmount = double.tryParse(totalText.replaceAll(RegExp(r'[^\d.]'), ''));
-      if (totalAmount != null && amount > totalAmount) {
-        return 'Cannot exceed total amount';
+      final duration = int.tryParse(durationText);
+      
+      if (totalAmount != null && duration != null && duration > 0) {
+        final individualAmount = totalAmount / duration;
+        _individualAmountController.text = individualAmount.toStringAsFixed(2);
+      } else {
+        _individualAmountController.clear();
       }
+    } else {
+      _individualAmountController.clear();
     }
-    return null;
   }
 
   String? _validateDuration(String? value) {
@@ -103,25 +101,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return 'Please enter a valid number';
     }
     if (duration <= 0) {
-      return 'Duration must be at least 1';
+      return 'Duration must be at least 1 month';
     }
     if (duration > 120) {
-      return 'Duration cannot exceed 120 periods';
+      return 'Duration cannot exceed 10 years (120 months)';
     }
-    return null;
-  }
-
-  String? _validateAmountPerPeriod(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return 'Amount per period is required';
-    }
-    final amount = double.tryParse(value.replaceAll(RegExp(r'[^\d.]'), ''));
-    if (amount == null) {
-      return 'Please enter a valid amount';
-    }
-    if (amount < 0) {
-      return 'Amount cannot be negative';
-    }
+    // Recalculate individual amount when duration changes
+    _calculateIndividualAmount();
     return null;
   }
 
@@ -247,39 +233,31 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 const SizedBox(height: 8),
                 _buildTextField(
                   controller: _totalAmountController,
-                  placeholder: 'Total Amount (eg: \$10.00)',
+                  placeholder: 'Total Amount (eg: ₹10.00)',
                   keyboardType: TextInputType.number,
                   validator: _validateTotalAmount,
-                ),
-                const SizedBox(height: 24),
-                // Individual Payment
-                _buildLabel('Individual Payment'),
-                const SizedBox(height: 8),
-                _buildTextField(
-                  controller: _individualPaymentController,
-                  placeholder: 'Individual payment',
-                  keyboardType: TextInputType.number,
-                  validator: _validateIndividualPayment,
+                  onChanged: (_) => _calculateIndividualAmount(),
                 ),
                 const SizedBox(height: 24),
                 // Duration
-                _buildLabel('Duration'),
+                _buildLabel('Duration (in months)'),
                 const SizedBox(height: 8),
                 _buildTextField(
                   controller: _durationController,
-                  placeholder: 'Duration (number of periods)',
+                  placeholder: 'Duration (in months)',
                   keyboardType: TextInputType.number,
                   validator: _validateDuration,
+                  onChanged: (_) => _calculateIndividualAmount(),
                 ),
                 const SizedBox(height: 24),
-                // Amount Per Period
-                _buildLabel('Amount Per Period'),
+                // Individual Amount (read-only, calculated)
+                _buildLabel('Individual Amount'),
                 const SizedBox(height: 8),
                 _buildTextField(
-                  controller: _amountPerPeriodController,
-                  placeholder: 'Enter amount per period',
+                  controller: _individualAmountController,
+                  placeholder: 'Calculated automatically',
                   keyboardType: TextInputType.number,
-                  validator: _validateAmountPerPeriod,
+                  readOnly: true,
                 ),
                 const SizedBox(height: 24),
                 // Collect Period
@@ -328,11 +306,15 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     required String placeholder,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool readOnly = false,
+    void Function(String)? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      readOnly: readOnly,
+      onChanged: onChanged,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       style: const TextStyle(
         fontSize: 15,
@@ -444,7 +426,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         final DateTime? picked = await showDatePicker(
           context: context,
           initialDate: DateTime.now(),
-          firstDate: DateTime.now(),
+          firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)), // Allow dates up to 5 years ago
           lastDate: DateTime(2100),
           builder: (context, child) {
             return Theme(
@@ -776,7 +758,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               prefixIcon: const Padding(
                 padding: EdgeInsets.only(left: 16, right: 8),
                 child: Text(
-                  '\$',
+                  '₹',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
@@ -947,7 +929,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       // Parse numeric values
       final totalAmount = double.tryParse(_totalAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
       final duration = int.tryParse(_durationController.text) ?? 0;
-      final amountPerPeriod = double.tryParse(_amountPerPeriodController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
+      // Calculate amount per period from total amount and duration
+      final amountPerPeriod = duration > 0 ? totalAmount / duration : 0.0;
 
       // Map collection period
       String collectionPeriod = 'monthly';

@@ -134,6 +134,16 @@ class _AgentMembersScreenState extends State<AgentMembersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
+      floatingActionButton: _currentUserIsAgent
+          ? FloatingActionButton(
+              onPressed: () => _showAssignMemberDialog(context),
+              backgroundColor: const Color(0xFF2D7A4F),
+              child: const Icon(
+                Icons.person_add,
+                color: Colors.white,
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -410,6 +420,236 @@ class _AgentMembersScreenState extends State<AgentMembersScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showAssignMemberDialog(BuildContext context) async {
+    // Get all group members
+    final allMembers = await _apiService.getGroupMembers(widget.groupId);
+    
+    // Filter unassigned members (not agents and not already assigned to an agent)
+    final unassignedMembers = allMembers.where((member) {
+      final isAgent = member['is_agent'] as bool? ?? false;
+      final agentId = member['agent_id'] as int?;
+      // Show members who are not agents and not assigned to any agent
+      return !isAgent && agentId == null;
+    }).toList();
+
+    if (unassignedMembers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No unassigned members available'),
+          backgroundColor: Color(0xFF2D7A4F),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext modalContext) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Color(0xFF171717),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Color(0xFF2A2A2A),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Assign Member',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontFamily: 'DM Sans',
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Color(0xFFA5A5A5),
+                      ),
+                      onPressed: () => Navigator.pop(modalContext),
+                    ),
+                  ],
+                ),
+              ),
+              // Members List
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  itemCount: unassignedMembers.length,
+                  itemBuilder: (context, index) {
+                    final member = unassignedMembers[index];
+                    final email = member['user_email'] as String?;
+                    final name = member['user_name'] as String?;
+                    
+                    String displayName = name ?? 
+                                        (email != null && email.isNotEmpty ? _extractNameFromEmail(email) : 'Unknown User');
+                    final initial = _getInitial(displayName);
+                    final memberNumber = member['member_number'] as int? ?? (index + 1);
+                    
+                    return InkWell(
+                      onTap: () async {
+                        // Show loading
+                        showDialog(
+                          context: modalContext,
+                          barrierDismissible: false,
+                          builder: (dialogContext) => const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
+                            ),
+                          ),
+                        );
+                        
+                        try {
+                          final result = await _apiService.assignMemberToAgent(
+                            groupId: widget.groupId,
+                            memberUserId: member['user_id'] as int,
+                            agentId: widget.agentUserId,
+                          );
+                          
+                          // Close loading and modal
+                          if (mounted) Navigator.pop(modalContext);
+                          if (mounted) Navigator.pop(modalContext);
+                          
+                          if (result != null) {
+                            // Show success message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Member assigned to ${widget.agentName}'),
+                                  backgroundColor: const Color(0xFF2D7A4F),
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: const EdgeInsets.all(16),
+                                ),
+                              );
+                            }
+                            
+                            // Refresh members list
+                            _loadMembers();
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Failed to assign member. Please try again.'),
+                                  backgroundColor: Colors.red,
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.all(16),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          // Close loading and modal
+                          if (mounted) Navigator.pop(modalContext);
+                          if (mounted) Navigator.pop(modalContext);
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: ${e.toString()}'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: _getAvatarColor(index),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  initial,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            // Name and member number
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '#$memberNumber • Unassigned',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      color: Color(0xFFA5A5A5),
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Chevron icon
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFFA5A5A5),
+                              size: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
