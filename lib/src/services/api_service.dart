@@ -380,6 +380,7 @@ class ApiService {
     required DateTime startingDate,
     required double totalAmount,
     required int duration,
+    required int numberOfMembers,
     required double amountPerPeriod,
     required String collectionPeriod, // 'weekly' or 'monthly'
     bool hasCommission = false,
@@ -400,6 +401,7 @@ class ApiService {
         'starting_date': dateStr,
         'total_amount': totalAmount,
         'duration': duration,
+        'number_of_members': numberOfMembers,
         'amount_per_period': amountPerPeriod,
         'collection_period': collectionPeriod.toLowerCase(),
         'join_as_member': joinAsMember,

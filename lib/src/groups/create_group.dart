@@ -16,6 +16,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   final _startingDateController = TextEditingController();
   final _totalAmountController = TextEditingController();
   final _durationController = TextEditingController();
+  final _numberOfMembersController = TextEditingController();
   final _individualAmountController = TextEditingController(); // Read-only, calculated field
   final _percentageController = TextEditingController();
   final _cashCommissionController = TextEditingController();
@@ -32,6 +33,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     _startingDateController.dispose();
     _totalAmountController.dispose();
     _durationController.dispose();
+    _numberOfMembersController.dispose();
     _individualAmountController.dispose();
     _percentageController.dispose();
     _cashCommissionController.dispose();
@@ -72,17 +74,20 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     return null;
   }
 
-  // Calculate individual amount based on total amount and duration
+  // Calculate individual amount based on total amount, duration, and number of members
   void _calculateIndividualAmount() {
     final totalText = _totalAmountController.text;
     final durationText = _durationController.text;
+    final numberOfMembersText = _numberOfMembersController.text;
     
-    if (totalText.isNotEmpty && durationText.isNotEmpty) {
+    if (totalText.isNotEmpty && durationText.isNotEmpty && numberOfMembersText.isNotEmpty) {
       final totalAmount = double.tryParse(totalText.replaceAll(RegExp(r'[^\d.]'), ''));
       final duration = int.tryParse(durationText);
+      final numberOfMembers = int.tryParse(numberOfMembersText);
       
-      if (totalAmount != null && duration != null && duration > 0) {
-        final individualAmount = totalAmount / duration;
+      if (totalAmount != null && duration != null && duration > 0 && 
+          numberOfMembers != null && numberOfMembers > 0) {
+        final individualAmount = totalAmount / (duration * numberOfMembers);
         _individualAmountController.text = individualAmount.toStringAsFixed(2);
       } else {
         _individualAmountController.clear();
@@ -107,6 +112,25 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return 'Duration cannot exceed 10 years (120 months)';
     }
     // Recalculate individual amount when duration changes
+    _calculateIndividualAmount();
+    return null;
+  }
+
+  String? _validateNumberOfMembers(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Number of members is required';
+    }
+    final numberOfMembers = int.tryParse(value.trim());
+    if (numberOfMembers == null) {
+      return 'Please enter a valid number';
+    }
+    if (numberOfMembers <= 0) {
+      return 'Number of members must be at least 1';
+    }
+    if (numberOfMembers > 100) {
+      return 'Number of members cannot exceed 100';
+    }
+    // Recalculate individual amount when number of members changes
     _calculateIndividualAmount();
     return null;
   }
@@ -247,6 +271,17 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                   placeholder: 'Duration (in months)',
                   keyboardType: TextInputType.number,
                   validator: _validateDuration,
+                  onChanged: (_) => _calculateIndividualAmount(),
+                ),
+                const SizedBox(height: 24),
+                // Number of Members
+                _buildLabel('Number of Members'),
+                const SizedBox(height: 8),
+                _buildTextField(
+                  controller: _numberOfMembersController,
+                  placeholder: 'Number of Members',
+                  keyboardType: TextInputType.number,
+                  validator: _validateNumberOfMembers,
                   onChanged: (_) => _calculateIndividualAmount(),
                 ),
                 const SizedBox(height: 24),
@@ -929,8 +964,11 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       // Parse numeric values
       final totalAmount = double.tryParse(_totalAmountController.text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
       final duration = int.tryParse(_durationController.text) ?? 0;
-      // Calculate amount per period from total amount and duration
-      final amountPerPeriod = duration > 0 ? totalAmount / duration : 0.0;
+      final numberOfMembers = int.tryParse(_numberOfMembersController.text) ?? 0;
+      // Calculate amount per period from total amount, duration, and number of members
+      final amountPerPeriod = (duration > 0 && numberOfMembers > 0) 
+          ? totalAmount / (duration * numberOfMembers) 
+          : 0.0;
 
       // Map collection period
       String collectionPeriod = 'monthly';
@@ -966,6 +1004,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         startingDate: startingDate,
         totalAmount: totalAmount,
         duration: duration,
+        numberOfMembers: numberOfMembers,
         amountPerPeriod: amountPerPeriod,
         collectionPeriod: collectionPeriod,
         hasCommission: hasCommission,
