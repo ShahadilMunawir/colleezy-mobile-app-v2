@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../../utils/responsive.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -94,32 +95,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1B1F1A),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Notifications',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: responsive.fontSize(18),
             fontFamily: 'DM Sans',
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: Colors.white, size: responsive.width(24)),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           if (_notifications.any((n) => n['is_read'] == false))
             TextButton(
               onPressed: _markAllAsRead,
-              child: const Text(
+              child: Text(
                 'Mark all read',
                 style: TextStyle(
                   color: Color(0xFF7FDE68),
-                  fontSize: 12,
+                  fontSize: responsive.fontSize(12),
                   fontFamily: 'DM Sans',
                 ),
               ),
@@ -130,30 +133,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         onRefresh: _loadNotifications,
         color: const Color(0xFF7FDE68),
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF7FDE68)))
+            ? Center(child: CircularProgressIndicator(color: Color(0xFF7FDE68)))
             : _notifications.isEmpty
-                ? _buildEmptyState()
-                : _buildNotificationsList(),
+                ? _buildEmptyState(context)
+                : _buildNotificationsList(context),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
+    final responsive = Responsive(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.notifications_none_outlined,
-            size: 64,
+            size: responsive.width(64),
             color: Colors.grey.withOpacity(0.5),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: responsive.spacing(16)),
           Text(
             'No notifications yet',
             style: TextStyle(
               color: Colors.grey.withOpacity(0.8),
-              fontSize: 16,
+              fontSize: responsive.fontSize(16),
               fontFamily: 'DM Sans',
             ),
           ),
@@ -162,11 +166,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationsList() {
+  Widget _buildNotificationsList(BuildContext context) {
+    final responsive = Responsive(context);
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: responsive.paddingAll(16),
       itemCount: _notifications.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => SizedBox(height: responsive.spacing(12)),
       itemBuilder: (context, index) {
         final notification = _notifications[index];
         final isRead = notification['is_read'] as bool? ?? false;
@@ -178,32 +183,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             }
           },
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: responsive.paddingAll(16),
             decoration: BoxDecoration(
-              color: isRead ? const Color(0xFF2A2A2A).withOpacity(0.5) : const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(16),
+              color: isRead ? Color(0xFF2A2A2A).withOpacity(0.5) : Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(responsive.radius(16)),
               border: isRead
                   ? null
-                  : Border.all(color: const Color(0xFF7FDE68).withOpacity(0.3), width: 1),
+                  : Border.all(color: Color(0xFF7FDE68).withOpacity(0.3), width: 1),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: responsive.paddingAll(10),
                   decoration: BoxDecoration(
                     color: isRead 
                         ? Colors.grey.withOpacity(0.1) 
-                        : const Color(0xFF7FDE68).withOpacity(0.1),
+                        : Color(0xFF7FDE68).withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     Icons.emoji_events_outlined,
-                    color: isRead ? Colors.grey : const Color(0xFF7FDE68),
-                    size: 20,
+                    color: isRead ? Colors.grey : Color(0xFF7FDE68),
+                    size: responsive.width(20),
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: responsive.spacing(16)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +222,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               style: TextStyle(
                                 color: isRead ? Colors.grey : Colors.white,
                                 fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: responsive.fontSize(16),
                                 fontFamily: 'DM Sans',
                               ),
                             ),
@@ -226,18 +231,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             _formatDateTime(notification['created_at']),
                             style: TextStyle(
                               color: Colors.grey,
-                              fontSize: 12,
+                              fontSize: responsive.fontSize(12),
                               fontFamily: 'DM Sans',
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: responsive.spacing(4)),
                       Text(
                         notification['message'] ?? '',
                         style: TextStyle(
-                          color: isRead ? Colors.grey : const Color(0xFFE0DED9),
-                          fontSize: 14,
+                          color: isRead ? Colors.grey : Color(0xFFE0DED9),
+                          fontSize: responsive.fontSize(14),
                           fontFamily: 'DM Sans',
                         ),
                       ),
@@ -246,9 +251,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
                 if (!isRead)
                   Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(left: 8, top: 4),
+                    width: responsive.width(8),
+                    height: responsive.height(8),
+                    margin: EdgeInsets.only(left: responsive.spacing(8), top: responsive.spacing(4)),
                     decoration: const BoxDecoration(
                       color: Color(0xFF7FDE68),
                       shape: BoxShape.circle,

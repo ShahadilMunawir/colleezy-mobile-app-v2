@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'create_group.dart';
 import 'group_details.dart';
 import '../services/api_service.dart';
+import '../../utils/responsive.dart';
 
 class GroupsScreen extends StatefulWidget {
   final int initialTab;
@@ -113,6 +114,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
       body: Stack(
@@ -123,22 +125,22 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 // Header
                 Container(
                   width: double.infinity,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Color(0xFF141414),
                     borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
+                      bottomLeft: Radius.circular(responsive.radius(24)),
+                      bottomRight: Radius.circular(responsive.radius(24)),
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    padding: responsive.paddingFromLTRB(20, 16, 20, 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Groups',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: responsive.fontSize(24),
                             fontWeight: FontWeight.w700,
                             color: Color(0xFFEFEEEC),
                           ),
@@ -147,8 +149,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
                           padding: EdgeInsets.zero,
                           icon: SvgPicture.asset(
                             'assets/svg/add.svg',
-                            width: 24,
-                            height: 24,
+                            width: responsive.width(24),
+                            height: responsive.height(24),
                             colorFilter: const ColorFilter.mode(
                               Colors.white,
                               BlendMode.srcIn,
@@ -174,22 +176,22 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ),
                 // Tabs
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: responsive.paddingSymmetric(horizontal: 20, vertical: 16),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: const Color(0xFF121212),
-                      borderRadius: BorderRadius.circular(30),
+                      color: Color(0xFF121212),
+                      borderRadius: BorderRadius.circular(responsive.radius(30)),
                     ),
                     child: Row(
                       children: [
                         Expanded(
-                          child: _buildTab('My Groups', 0),
+                          child: _buildTab(context, 'My Groups', 0),
                         ),
                         Expanded(
-                          child: _buildTab('As Members', 1),
+                          child: _buildTab(context, 'As Members', 1),
                         ),
                         Expanded(
-                          child: _buildTab('As Agents', 2),
+                          child: _buildTab(context, 'As Agents', 2),
                         ),
                       ],
                     ),
@@ -197,7 +199,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                 ),
                 // Groups List
                 Expanded(
-                  child: _buildGroupsList(),
+                  child: _buildGroupsList(context),
                 ),
               ],
             ),
@@ -207,7 +209,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
   }
 
-  Widget _buildGroupsList() {
+  Widget _buildGroupsList(BuildContext context) {
+    final responsive = Responsive(context);
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -223,19 +226,19 @@ class _GroupsScreenState extends State<GroupsScreen> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.red,
-                fontSize: 14,
+                fontSize: responsive.fontSize(14),
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsive.spacing(16)),
             ElevatedButton(
               onPressed: _loadGroups,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2D7A4F),
               ),
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -258,25 +261,25 @@ class _GroupsScreenState extends State<GroupsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.group_outlined,
-              size: 64,
+              size: responsive.width(64),
               color: Color(0xFFC1BDB3),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsive.spacing(16)),
             Text(
               emptyMessage,
-              style: const TextStyle(
-                fontSize: 18,
+              style: TextStyle(
+                fontSize: responsive.fontSize(18),
                 fontWeight: FontWeight.w600,
                 color: Color(0xFFF2F2F2),
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: responsive.spacing(8)),
+            Text(
               'Create your first group to get started',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: responsive.fontSize(14),
                 fontWeight: FontWeight.w400,
                 color: Color(0xFFC1BDB3),
               ),
@@ -291,13 +294,14 @@ class _GroupsScreenState extends State<GroupsScreen> {
       onRefresh: _loadGroups,
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
-        padding: const EdgeInsets.all(20),
+        padding: responsive.paddingAll(20),
         itemCount: displayedGroups.length,
         itemBuilder: (context, index) {
           final group = displayedGroups[index];
           return Padding(
-            padding: EdgeInsets.only(bottom: index < displayedGroups.length - 1 ? 16 : 0),
+            padding: EdgeInsets.only(bottom: index < displayedGroups.length - 1 ? responsive.spacing(16) : 0),
             child: _buildGroupCard(
+              context: context,
               groupId: group['id'] as int,
               title: group['name'] as String? ?? 'Unnamed Group',
             ),
@@ -308,9 +312,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
   }
 
   Widget _buildGroupCard({
+    required BuildContext context,
     required int groupId,
     required String title,
   }) {
+    final responsive = Responsive(context);
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
@@ -322,18 +328,18 @@ class _GroupsScreenState extends State<GroupsScreen> {
           ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(responsive.radius(16)),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
+        padding: responsive.paddingAll(20),
         decoration: BoxDecoration(
-          color: const Color(0xFF232220),
-          borderRadius: BorderRadius.circular(16),
+          color: Color(0xFF232220),
+          borderRadius: BorderRadius.circular(responsive.radius(16)),
         ),
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 18,
+          style: TextStyle(
+            fontSize: responsive.fontSize(18),
             fontWeight: FontWeight.w600,
             color: Color(0xFFF2F2F2),
           ),
@@ -342,7 +348,8 @@ class _GroupsScreenState extends State<GroupsScreen> {
     );
   }
 
-  Widget _buildTab(String label, int index) {
+  Widget _buildTab(BuildContext context, String label, int index) {
+    final responsive = Responsive(context);
     final isSelected = _selectedTab == index;
     return GestureDetector(
       onTap: () {
@@ -351,18 +358,18 @@ class _GroupsScreenState extends State<GroupsScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: responsive.paddingSymmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xCC232220) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
+          color: isSelected ? Color(0xCC232220) : Colors.transparent,
+          borderRadius: BorderRadius.circular(responsive.radius(30)),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: responsive.fontSize(16),
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFFA5A5A5),
+              color: isSelected ? Colors.white : Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),

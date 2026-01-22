@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../profile/profile_screen.dart';
 import 'otp_verification_screen.dart';
+import '../../utils/responsive.dart';
 
 /// Minimal country data for the country code picker
 class Country {
@@ -243,6 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     
     return Scaffold(
@@ -264,45 +266,49 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     children: [
                       SizedBox(
-                        height: 250,
+                        height: responsive.height(250),
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
                             Positioned(
                               left: 0,
                               top: 0,
-                              child: SvgPicture.asset('assets/svg/card.svg', width: 200, height: 200),
+                              child: SvgPicture.asset(
+                                'assets/svg/card.svg',
+                                width: responsive.width(200),
+                                height: responsive.height(200),
+                              ),
                             ),
                           ],
                         ),
                       ),
                       SvgPicture.asset('assets/svg/logo.svg'),
-                      const SizedBox(height: 50),
+                      SizedBox(height: responsive.spacing(50)),
                       Flexible(
                         child: ConstrainedBox(
                           constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight - 250 - 100 - 50,
+                            minHeight: constraints.maxHeight - responsive.height(250) - responsive.height(100) - responsive.spacing(50),
                           ),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Color(0xFF2A2A2A),
                               borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(30),
-                                topRight: Radius.circular(30),
+                                topLeft: Radius.circular(responsive.radius(30)),
+                                topRight: Radius.circular(responsive.radius(30)),
                               ),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            padding: responsive.paddingSymmetric(horizontal: 20),
                             child: Column(
                   children: [
-                    const SizedBox(height: 40),
+                    SizedBox(height: responsive.spacing(40)),
                     RichText(
                       textAlign: TextAlign.center,
-                      text: const TextSpan(
+                      text: TextSpan(
                         children: [
                           TextSpan(
                             text: 'Welcome To\n',
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: responsive.fontSize(32),
                               fontWeight: FontWeight.w600,
                               fontFamily: 'DM Sans',
                               color: Color(0XFFEFEEEC),
@@ -312,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextSpan(
                             text: 'Colleezy',
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: responsive.fontSize(32),
                               fontWeight: FontWeight.w800,
                               fontFamily: 'DM Sans',
                               color: Color(0xFF2D7A4F),
@@ -322,22 +328,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
+                    SizedBox(height: responsive.spacing(12)),
+                    Text(
                       'Sign in with your Colleezy account to Manage money',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: responsive.fontSize(12),
                         fontWeight: FontWeight.w500,
                         color: Color(0xFFD0CDC6),
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: responsive.spacing(20)),
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFF141414),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(responsive.radius(12)),
                       ),
                       child: Row(
                         children: [
@@ -345,8 +351,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           GestureDetector(
                             onTap: _showCountryPicker,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-                              decoration: const BoxDecoration(
+                              padding: responsive.paddingSymmetric(horizontal: 10, vertical: 16),
+                              decoration: BoxDecoration(
                                 border: Border(
                                   right: BorderSide(
                                     color: Color(0xFF2A2A2A),
@@ -359,23 +365,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: [
                                   Text(
                                     _selectedCountry.flag,
-                                    style: const TextStyle(fontSize: 18),
+                                    style: TextStyle(fontSize: responsive.fontSize(18)),
                                   ),
-                                  const SizedBox(width: 4),
+                                  SizedBox(width: responsive.spacing(4)),
                                   Text(
                                     _selectedCountry.dialCode,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Color(0xFFEFEEEC),
-                                      fontSize: 14,
+                                      fontSize: responsive.fontSize(14),
                                       fontWeight: FontWeight.w500,
                                       fontFamily: 'DM Sans',
                                     ),
                                   ),
-                                  const SizedBox(width: 2),
-                                  const Icon(
+                                  SizedBox(width: responsive.spacing(2)),
+                                  Icon(
                                     Icons.keyboard_arrow_down_rounded,
                                     color: Color(0xFF6B7280),
-                                    size: 18,
+                                    size: responsive.width(18),
                                   ),
                                 ],
                               ),
@@ -387,27 +393,27 @@ class _LoginScreenState extends State<LoginScreen> {
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               maxLength: _selectedCountry.phoneLength,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Color(0xFFEFEEEC),
-                                fontSize: 15,
+                                fontSize: responsive.fontSize(15),
                                 fontWeight: FontWeight.w400,
                                 fontFamily: 'DM Sans',
                               ),
                               decoration: InputDecoration(
                                 hintText: 'Phone Number (${_selectedCountry.phoneLength} digits)',
-                                hintStyle: const TextStyle(
+                                hintStyle: TextStyle(
                                   color: Color(0xFFD0CDC6),
-                                  fontSize: 15,
+                                  fontSize: responsive.fontSize(15),
                                   fontWeight: FontWeight.w400,
                                 ),
                                 counterText: '', // Hide the character counter
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(responsive.radius(12)),
                                   borderSide: BorderSide.none,
                                 ),
                                 filled: true,
                                 fillColor: Colors.transparent,
-                                contentPadding: const EdgeInsets.symmetric(
+                                contentPadding: responsive.paddingSymmetric(
                                   horizontal: 16,
                                   vertical: 18,
                                 ),
@@ -417,10 +423,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: responsive.spacing(20)),
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: responsive.height(56),
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handlePhoneSignIn,
                         style: ElevatedButton.styleFrom(
@@ -428,31 +434,31 @@ class _LoginScreenState extends State<LoginScreen> {
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(responsive.radius(12)),
                           ),
                           disabledBackgroundColor: const Color(0xFF9CA3AF),
                         ),
                         child: _isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
+                            ? SizedBox(
+                                width: responsive.width(24),
+                                height: responsive.height(24),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(Colors.white),
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Sign In with Phone',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: responsive.fontSize(16),
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.2,
                                 ),
                               ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: responsive.spacing(32)),
                     Row(
                       children: [
                         Expanded(
@@ -461,12 +467,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: const Color(0xFFE5E7EB),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
+                        Padding(
+                          padding: responsive.paddingSymmetric(horizontal: 16),
                           child: Text(
                             'Or Continue With',
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: responsive.fontSize(13),
                               color: Color(0xFFD0CDC6),
                               fontWeight: FontWeight.w500,
                             ),
@@ -480,59 +486,59 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: responsive.spacing(28)),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         GestureDetector(
                           onTap: _isLoading ? null : _handleGoogleSignIn,
                           child: Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: responsive.paddingAll(12),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(responsive.radius(12)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  blurRadius: responsive.spacing(8),
+                                  offset: Offset(0, responsive.spacing(2)),
                                 ),
                               ],
                             ),
-                            width: 64,
+                            width: responsive.width(64),
                             child: SvgPicture.asset(
                               'assets/svg/google.svg',
-                              width: 24,
-                              height: 24,
+                              width: responsive.width(24),
+                              height: responsive.height(24),
                               fit: BoxFit.contain,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        SizedBox(width: responsive.spacing(10)),
                         Container(
-                          padding: const EdgeInsets.all(12),
-                          width: 64,
+                          padding: responsive.paddingAll(12),
+                          width: responsive.width(64),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(responsive.radius(12)),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                blurRadius: responsive.spacing(8),
+                                offset: Offset(0, responsive.spacing(2)),
                               ),
                             ],
                           ),
                           child: SvgPicture.asset(
                             'assets/svg/apple.svg',
-                            width: 24,
-                            height: 24,
+                            width: responsive.width(24),
+                            height: responsive.height(24),
                             fit: BoxFit.contain,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 40),
+                    SizedBox(height: responsive.spacing(40)),
                   ],
                 ),
                             ),
@@ -600,34 +606,35 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.65,
-      decoration: const BoxDecoration(
-        color: Color(0xFF2A2A2A),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(responsive.radius(24)),
+          topRight: Radius.circular(responsive.radius(24)),
         ),
       ),
       child: Column(
         children: [
           // Handle bar
           Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
+            margin: EdgeInsets.only(top: responsive.spacing(12)),
+            width: responsive.width(40),
+            height: responsive.height(4),
             decoration: BoxDecoration(
               color: const Color(0xFF6B7280),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(responsive.radius(2)),
             ),
           ),
           // Title
-          const Padding(
-            padding: EdgeInsets.all(20),
+          Padding(
+            padding: responsive.paddingAll(20),
             child: Text(
               'Select Country',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: responsive.fontSize(18),
                 fontWeight: FontWeight.w600,
                 color: Color(0xFFEFEEEC),
                 fontFamily: 'DM Sans',
@@ -636,39 +643,39 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
           ),
           // Search field
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: responsive.paddingSymmetric(horizontal: 20),
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFF141414),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(responsive.radius(12)),
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: _filterCountries,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFFEFEEEC),
-                  fontSize: 15,
+                  fontSize: responsive.fontSize(15),
                   fontFamily: 'DM Sans',
                 ),
                 decoration: InputDecoration(
                   hintText: 'Search country...',
-                  hintStyle: const TextStyle(
+                  hintStyle: TextStyle(
                     color: Color(0xFFD0CDC6),
-                    fontSize: 15,
+                    fontSize: responsive.fontSize(15),
                     fontWeight: FontWeight.w400,
                   ),
-                  prefixIcon: const Icon(
+                  prefixIcon: Icon(
                     Icons.search_rounded,
                     color: Color(0xFF6B7280),
-                    size: 22,
+                    size: responsive.width(22),
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(responsive.radius(12)),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
                   fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(
+                  contentPadding: responsive.paddingSymmetric(
                     horizontal: 16,
                     vertical: 14,
                   ),
@@ -676,11 +683,11 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: responsive.spacing(12)),
           // Country list
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: responsive.paddingSymmetric(horizontal: 12),
               itemCount: _filteredCountries.length,
               itemBuilder: (context, index) {
                 final country = _filteredCountries[index];
@@ -689,21 +696,21 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 return GestureDetector(
                   onTap: () => widget.onSelect(country),
                   child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    margin: responsive.paddingSymmetric(vertical: 2),
+                    padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: isSelected 
                           ? const Color(0xFF2D7A4F).withOpacity(0.15)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(responsive.radius(10)),
                     ),
                     child: Row(
                       children: [
                         Text(
                           country.flag,
-                          style: const TextStyle(fontSize: 24),
+                          style: TextStyle(fontSize: responsive.fontSize(24)),
                         ),
-                        const SizedBox(width: 14),
+                        SizedBox(width: responsive.spacing(14)),
                         Expanded(
                           child: Text(
                             country.name,
@@ -711,7 +718,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                               color: isSelected 
                                   ? const Color(0xFF2D7A4F) 
                                   : const Color(0xFFEFEEEC),
-                              fontSize: 15,
+                              fontSize: responsive.fontSize(15),
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                               fontFamily: 'DM Sans',
                             ),
@@ -723,17 +730,17 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                             color: isSelected 
                                 ? const Color(0xFF2D7A4F) 
                                 : const Color(0xFFD0CDC6),
-                            fontSize: 14,
+                            fontSize: responsive.fontSize(14),
                             fontWeight: FontWeight.w500,
                             fontFamily: 'DM Sans',
                           ),
                         ),
                         if (isSelected) ...[
-                          const SizedBox(width: 10),
-                          const Icon(
+                          SizedBox(width: responsive.spacing(10)),
+                          Icon(
                             Icons.check_rounded,
                             color: Color(0xFF2D7A4F),
-                            size: 20,
+                            size: responsive.width(20),
                           ),
                         ],
                       ],

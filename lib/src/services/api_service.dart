@@ -383,6 +383,7 @@ class ApiService {
     required int numberOfMembers,
     required double amountPerPeriod,
     required String collectionPeriod, // 'weekly' or 'monthly'
+    double? frequencyInDays, // Custom frequency in days (e.g., 15 for every 15 days)
     bool hasCommission = false,
     String? commissionType,
     double? commissionValue,
@@ -407,6 +408,10 @@ class ApiService {
         'join_as_member': joinAsMember,
         'auto_draw': autoDraw,
       };
+      
+      if (frequencyInDays != null) {
+        body['frequency_in_days'] = frequencyInDays;
+      }
       
       if (autoDrawTime != null) {
         body['auto_draw_time'] = autoDrawTime;

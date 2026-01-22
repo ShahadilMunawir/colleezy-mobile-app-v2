@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../../utils/responsive.dart';
 
 class WinnersScreen extends StatefulWidget {
   const WinnersScreen({super.key});
@@ -145,6 +146,7 @@ class _WinnersScreenState extends State<WinnersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
       body: SafeArea(
@@ -153,30 +155,30 @@ class _WinnersScreenState extends State<WinnersScreen> {
             // Header
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Color(0xFF141414),
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                  bottomLeft: Radius.circular(responsive.radius(24)),
+                  bottomRight: Radius.circular(responsive.radius(24)),
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 16, 20, 20),
+                padding: responsive.paddingFromLTRB(0, 16, 20, 20),
                 child: Row(
                   children: [
                     IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.arrow_back,
                         color: Colors.white,
-                        size: 24,
+                        size: responsive.width(24),
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const Text(
+                    Text(
                       'Winners',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: responsive.fontSize(18),
                         fontWeight: FontWeight.w600,
                         color: Color(0xFFEFEEEC),
                         fontFamily: 'DM Sans',
@@ -188,22 +190,22 @@ class _WinnersScreenState extends State<WinnersScreen> {
             ),
             // Filters
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: responsive.paddingAll(20),
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildDateFilterDropdown(),
+                    child: _buildDateFilterDropdown(context),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: responsive.spacing(12)),
                   Expanded(
-                    child: _buildGroupFilterDropdown(),
+                    child: _buildGroupFilterDropdown(context),
                   ),
                 ],
               ),
             ),
             // Winners List
             Expanded(
-              child: _buildWinnersList(),
+              child: _buildWinnersList(context),
             ),
           ],
         ),
@@ -211,33 +213,34 @@ class _WinnersScreenState extends State<WinnersScreen> {
     );
   }
 
-  Widget _buildDateFilterDropdown() {
+  Widget _buildDateFilterDropdown(BuildContext context) {
+    final responsive = Responsive(context);
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedDate,
           isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          hint: const Text(
+          padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
+          hint: Text(
             'Date',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: responsive.fontSize(15),
               fontWeight: FontWeight.w400,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
             color: Color(0xFFA5A5A5),
-            size: 24,
+            size: responsive.width(24),
           ),
-          style: const TextStyle(
-            fontSize: 15,
+          style: TextStyle(
+            fontSize: responsive.fontSize(15),
             fontWeight: FontWeight.w400,
             color: Color(0xFFD0CDC6),
             fontFamily: 'DM Sans',
@@ -259,36 +262,37 @@ class _WinnersScreenState extends State<WinnersScreen> {
     );
   }
 
-  Widget _buildGroupFilterDropdown() {
+  Widget _buildGroupFilterDropdown(BuildContext context) {
+    final responsive = Responsive(context);
     final List<String> groupNames = ['All Groups', ..._groups.map((g) => g['name'] as String).whereType<String>().toList()];
     final List<int?> groupIds = [null, ..._groups.map((g) => g['id'] as int?).toList()];
 
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int?>(
           value: _selectedGroupId,
           isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
           hint: Text(
             _selectedGroupName ?? 'All Groups',
-            style: const TextStyle(
-              fontSize: 15,
+            style: TextStyle(
+              fontSize: responsive.fontSize(15),
               fontWeight: FontWeight.w400,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
             color: Color(0xFFA5A5A5),
-            size: 24,
+            size: responsive.width(24),
           ),
-          style: const TextStyle(
-            fontSize: 15,
+          style: TextStyle(
+            fontSize: responsive.fontSize(15),
             fontWeight: FontWeight.w400,
             color: Color(0xFFD0CDC6),
             fontFamily: 'DM Sans',
@@ -313,7 +317,8 @@ class _WinnersScreenState extends State<WinnersScreen> {
     );
   }
 
-  Widget _buildWinnersList() {
+  Widget _buildWinnersList(BuildContext context) {
+    final responsive = Responsive(context);
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -329,12 +334,12 @@ class _WinnersScreenState extends State<WinnersScreen> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(color: Colors.red),
+              style: TextStyle(color: Colors.red, fontSize: responsive.fontSize(14)),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: responsive.spacing(10)),
             ElevatedButton(
               onPressed: _loadData,
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -342,11 +347,11 @@ class _WinnersScreenState extends State<WinnersScreen> {
     }
 
     if (_filteredDraws.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No winners yet.',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: responsive.fontSize(16),
             color: Color(0xFFA5A5A5),
           ),
         ),
@@ -372,13 +377,14 @@ class _WinnersScreenState extends State<WinnersScreen> {
       onRefresh: _loadDraws,
       color: const Color(0xFF2D7A4F),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: _buildWinnerSections(grouped),
+        padding: responsive.paddingSymmetric(horizontal: 20),
+        children: _buildWinnerSections(context, grouped),
       ),
     );
   }
 
-  List<Widget> _buildWinnerSections(Map<String, List<Map<String, dynamic>>> grouped) {
+  List<Widget> _buildWinnerSections(BuildContext context, Map<String, List<Map<String, dynamic>>> grouped) {
+    final responsive = Responsive(context);
     List<Widget> sections = [];
 
     // Sort dates (most recent first)
@@ -396,11 +402,11 @@ class _WinnersScreenState extends State<WinnersScreen> {
       final draws = grouped[date]!;
       sections.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 16, top: 8),
+          padding: EdgeInsets.only(bottom: responsive.spacing(16), top: responsive.spacing(8)),
           child: Text(
             date,
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: responsive.fontSize(16),
               fontWeight: FontWeight.w600,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
@@ -417,13 +423,14 @@ class _WinnersScreenState extends State<WinnersScreen> {
 
         sections.add(
           _buildWinnerCard(
+            context: context,
             winnerName: winnerName,
             groupName: groupName,
             drawType: drawType,
             createdAt: createdAt,
           ),
         );
-        sections.add(const SizedBox(height: 12));
+        sections.add(SizedBox(height: responsive.spacing(12)));
       }
     }
 
@@ -431,11 +438,13 @@ class _WinnersScreenState extends State<WinnersScreen> {
   }
 
   Widget _buildWinnerCard({
+    required BuildContext context,
     required String winnerName,
     required String groupName,
     required String drawType,
     String? createdAt,
   }) {
+    final responsive = Responsive(context);
     // Format time if available
     String timeText = '';
     if (createdAt != null) {
@@ -465,17 +474,17 @@ class _WinnersScreenState extends State<WinnersScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: responsive.paddingAll(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(16),
+        color: Color(0xFF232220),
+        borderRadius: BorderRadius.circular(responsive.radius(16)),
       ),
       child: Row(
         children: [
           // Winner Avatar
           Container(
-            width: 56,
-            height: 56,
+            width: responsive.width(56),
+            height: responsive.height(56),
             decoration: BoxDecoration(
               color: const Color(0xFF2D7A4F),
               shape: BoxShape.circle,
@@ -483,8 +492,8 @@ class _WinnersScreenState extends State<WinnersScreen> {
             child: Center(
               child: Text(
                 initial,
-                style: const TextStyle(
-                  fontSize: 24,
+                style: TextStyle(
+                  fontSize: responsive.fontSize(24),
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                   fontFamily: 'DM Sans',
@@ -492,7 +501,7 @@ class _WinnersScreenState extends State<WinnersScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: responsive.spacing(16)),
           // Winner Info
           Expanded(
             child: Column(
@@ -500,40 +509,40 @@ class _WinnersScreenState extends State<WinnersScreen> {
               children: [
                 Text(
                   displayName,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(18),
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                     fontFamily: 'DM Sans',
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: responsive.spacing(4)),
                 Text(
                   groupName,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(14),
                     fontWeight: FontWeight.w400,
                     color: Color(0xFFA5A5A5),
                     fontFamily: 'DM Sans',
                   ),
                 ),
                 if (timeText.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: responsive.spacing(2)),
                   Text(
                     '$drawTypeText • $timeText',
-                    style: const TextStyle(
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(12),
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF6B7280),
                       fontFamily: 'DM Sans',
                     ),
                   ),
                 ] else ...[
-                  const SizedBox(height: 2),
+                  SizedBox(height: responsive.spacing(2)),
                   Text(
                     drawTypeText,
-                    style: const TextStyle(
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(12),
                       fontWeight: FontWeight.w400,
                       color: Color(0xFF6B7280),
                       fontFamily: 'DM Sans',
@@ -545,15 +554,15 @@ class _WinnersScreenState extends State<WinnersScreen> {
           ),
           // Trophy Icon
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: responsive.paddingAll(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2D7A4F).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: Color(0xFF2D7A4F).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(responsive.radius(8)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.emoji_events,
               color: Color(0xFF2D7A4F),
-              size: 24,
+              size: responsive.width(24),
             ),
           ),
         ],

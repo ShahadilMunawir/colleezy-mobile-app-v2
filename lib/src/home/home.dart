@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../notifications/notifications_screen.dart';
 import '../support/support_screen.dart';
+import '../../utils/responsive.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int tabIndex)? onNavigateToGroups;
@@ -295,15 +296,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showInviteModal() {
+    final responsive = Responsive(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: Color(0xFF2A2A2A),
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
+            topLeft: Radius.circular(responsive.radius(30)),
+            topRight: Radius.circular(responsive.radius(30)),
           ),
         ),
         child: Column(
@@ -311,21 +313,21 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             // Drag handle
             Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 8),
-              width: 40,
-              height: 4,
+              margin: EdgeInsets.only(top: responsive.spacing(12), bottom: responsive.spacing(8)),
+              width: responsive.width(40),
+              height: responsive.height(4),
               decoration: BoxDecoration(
-                color: const Color(0xFF6B7280).withOpacity(0.3),
-                borderRadius: BorderRadius.circular(2),
+                color: Color(0xFF6B7280).withOpacity(0.3),
+                borderRadius: BorderRadius.circular(responsive.radius(2)),
               ),
             ),
             // Header
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            Padding(
+              padding: responsive.paddingSymmetric(horizontal: 20, vertical: 16),
               child: Text(
                 'Invite Friends',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: responsive.fontSize(18),
                   fontWeight: FontWeight.w700,
                   color: Color(0xFFE0DED9),
                   fontFamily: 'DM Sans',
@@ -334,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             // Share button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+              padding: responsive.paddingSymmetric(horizontal: 20, vertical: 20),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -354,26 +356,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: const Color(0xFF2D7A4F),
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(
+                    padding: responsive.paddingSymmetric(
                       horizontal: 20,
                       vertical: 16,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(responsive.radius(12)),
                     ),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(
                         Icons.share,
-                        size: 20,
+                        size: responsive.width(20),
                       ),
-                      SizedBox(width: 12),
+                      SizedBox(width: responsive.spacing(12)),
                       Text(
                         'Share App Link',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: responsive.fontSize(16),
                           fontWeight: FontWeight.w600,
                           fontFamily: 'DM Sans',
                         ),
@@ -385,19 +387,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             // Description
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: responsive.paddingSymmetric(horizontal: 20),
               child: Text(
                 'Share the app with your friends and start managing groups together!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: responsive.fontSize(14),
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFFA5A5A5),
+                  color: Color(0xFFA5A5A5),
                   fontFamily: 'DM Sans',
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            SizedBox(height: responsive.spacing(30)),
           ],
         ),
       ),
@@ -406,6 +408,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -430,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Header
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: responsive.paddingAll(20.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -449,23 +452,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           child: Row(
                             children: [
-                              _buildUserAvatar(),
-                              const SizedBox(width: 12),
+                              _buildUserAvatar(context),
+                              SizedBox(width: responsive.spacing(12)),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Hello,',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: responsive.fontSize(13),
                                       color: Color(0xFFF2F2F2),
                                       fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                   Text(
                                     _isLoadingUser ? 'Loading...' : _getDisplayName(),
-                                    style: const TextStyle(
-                                      fontSize: 16,
+                                    style: TextStyle(
+                                      fontSize: responsive.fontSize(16),
                                       color: Color(0xFFF2F2F2),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -490,8 +493,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               SvgPicture.asset(
                                 'assets/svg/bell.svg',
-                                width: 22,
-                                height: 22,
+                                width: responsive.width(22),
+                                height: responsive.height(22),
                                 colorFilter: const ColorFilter.mode(
                                   Colors.white,
                                   BlendMode.srcIn,
@@ -499,23 +502,23 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               if (_unreadNotificationsCount > 0)
                                 Positioned(
-                                  right: -4,
-                                  top: -4,
+                                  right: -responsive.spacing(4),
+                                  top: -responsive.spacing(4),
                                   child: Container(
-                                    padding: const EdgeInsets.all(4),
+                                    padding: responsive.paddingAll(4),
                                     decoration: const BoxDecoration(
                                       color: Colors.red,
                                       shape: BoxShape.circle,
                                     ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 16,
-                                      minHeight: 16,
+                                    constraints: BoxConstraints(
+                                      minWidth: responsive.width(16),
+                                      minHeight: responsive.height(16),
                                     ),
                                     child: Text(
                                       _unreadNotificationsCount > 9 ? '9+' : '$_unreadNotificationsCount',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 8,
+                                        fontSize: responsive.fontSize(8),
                                         fontWeight: FontWeight.bold,
                                       ),
                                       textAlign: TextAlign.center,
@@ -532,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Carousel
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: 180,
+                    height: responsive.height(180),
                     child: PageView(
                       padEnds: false,
                       controller: _pageController,
@@ -541,11 +544,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           _currentPage = index;
                         });
                       },
-                      children: _buildCategoryCards(),
+                      children: _buildCategoryCards(context),
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                SliverToBoxAdapter(child: SizedBox(height: responsive.spacing(16))),
                 // Page indicator
                 SliverToBoxAdapter(
                   child: Row(
@@ -561,24 +564,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: _buildDot(_currentPage == index),
+                          padding: responsive.paddingSymmetric(horizontal: 3),
+                          child: _buildDot(context, _currentPage == index),
                         ),
                       ),
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                SliverToBoxAdapter(child: SizedBox(height: responsive.spacing(24))),
                 // Wrapped section with top border radius
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: Color(0xFF2A2A2A),
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+                        topLeft: Radius.circular(responsive.radius(30)),
+                        topRight: Radius.circular(responsive.radius(30)),
                       ),
                     ),
                     child: Column(
@@ -586,9 +589,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         // Action buttons
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 0),
+                          padding: EdgeInsets.symmetric(horizontal: 0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding: responsive.paddingSymmetric(
                               vertical: 20,
                               horizontal: 16,
                             ),
@@ -597,6 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
                                 _buildActionButton(
+                                  context: context,
                                   svgPath: 'assets/svg/create.svg',
                                   label: 'Create',
                                   color: const Color(0xFF2D7A4F),
@@ -615,12 +619,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                 ),
                                 _buildActionButton(
+                                  context: context,
                                   svgPath: 'assets/svg/invite.svg',
                                   label: 'Invite',
                                   color: const Color(0xFF2D7A4F),
                                   onTap: _showInviteModal,
                                 ),
                                 _buildActionButton(
+                                  context: context,
                                   svgPath: 'assets/svg/winnder.svg',
                                   label: 'Winner',
                                   color: const Color(0xFF2D7A4F),
@@ -634,6 +640,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                 ),
                                 _buildActionButton(
+                                  context: context,
                                   svgPath: 'assets/svg/support.svg',
                                   label: 'Support',
                                   color: const Color(0xFF2D7A4F),
@@ -650,36 +657,36 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: responsive.spacing(10)),
                         // Quote card
                         Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: responsive.paddingSymmetric(
                             vertical: 20,
                             horizontal: 40,
                           ),
                           decoration: BoxDecoration(
-                            color: Color(0xFF141414),
-                            borderRadius: BorderRadius.circular(20),
+                            color: Color(0xFFE8E8E8),
+                            borderRadius: BorderRadius.circular(responsive.radius(20)),
                           ),
                           child: Column(
-                            children: const [
+                            children: [
                               Text(
                                 'Dream Bid . Start small. Act now.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: responsive.fontSize(16),
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFFF2F2F2),
+                                  color: Color(0xFF2A2A2A),
                                   height: 1.4,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              SizedBox(height: responsive.spacing(8)),
                               Text(
                                 '-Robin Sharma',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: responsive.fontSize(13),
                                   fontWeight: FontWeight.w400,
-                                  color: Color(0xFF136232),
+                                  color: Color(0xFF2D7A4F),
                                 ),
                               ),
                             ],
@@ -690,12 +697,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                              Padding(
+                                padding: responsive.paddingFromLTRB(24, 24, 24, 16),
                                 child: Text(
                                   'Next Payment',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: responsive.fontSize(18),
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFFD2D2D2),
                                   ),
@@ -703,13 +710,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               Expanded(
                                 child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
+                                  padding: responsive.paddingFromLTRB(
                                     24,
                                     0,
                                     24,
                                     0,
                                   ),
-                                  child: _buildNextPaymentsList(),
+                                  child: _buildNextPaymentsList(context),
                                 ),
                               ),
                             ],
@@ -728,55 +735,58 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDot(bool isActive) {
+  Widget _buildDot(BuildContext context, bool isActive) {
+    final responsive = Responsive(context);
     return Container(
-      width: 8,
-      height: 8,
+      width: responsive.width(8),
+      height: responsive.height(8),
       decoration: BoxDecoration(
         color: isActive ? const Color(0xFF6B7280) : const Color(0xFFD1D5DB),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(responsive.radius(4)),
       ),
     );
   }
 
   Widget _buildActionButton({
+    required BuildContext context,
     required String svgPath,
     required String label,
     required Color color,
     VoidCallback? onTap,
   }) {
+    final responsive = Responsive(context);
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: responsive.paddingAll(14),
             decoration: BoxDecoration(
               color: Color(0xFF141414),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+                  blurRadius: responsive.spacing(8),
+                  offset: Offset(0, responsive.spacing(2)),
                 ),
               ],
             ),
             child: SvgPicture.asset(
               svgPath,
-              width: 28,
-              height: 28,
+              width: responsive.width(28),
+              height: responsive.height(28),
               colorFilter: ColorFilter.mode(
                 color,
                 BlendMode.srcIn,
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: responsive.spacing(8)),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 13,
+            style: TextStyle(
+              fontSize: responsive.fontSize(13),
               fontWeight: FontWeight.w600,
               color: Color(0xFFD0CDC6),
             ),
@@ -786,11 +796,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildUserAvatar() {
+  Widget _buildUserAvatar(BuildContext context) {
+    final responsive = Responsive(context);
     if (_userPhotoUrl != null && _userPhotoUrl!.isNotEmpty) {
       return Container(
-        width: 44,
-        height: 44,
+        width: responsive.width(44),
+        height: responsive.height(44),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.grey[300],
@@ -810,8 +821,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // Show placeholder with initial
       final initial = _getInitial(_userName ?? 'U');
       return Container(
-        width: 44,
-        height: 44,
+        width: responsive.width(44),
+        height: responsive.height(44),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: const Color(0xFF2D7A4F),
@@ -819,8 +830,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             initial,
-            style: const TextStyle(
-              fontSize: 18,
+            style: TextStyle(
+              fontSize: responsive.fontSize(18),
               fontWeight: FontWeight.w700,
               color: Colors.white,
               fontFamily: 'DM Sans',
@@ -853,9 +864,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return name[0].toUpperCase();
   }
 
-  List<Widget> _buildCategoryCards() {
+  List<Widget> _buildCategoryCards(BuildContext context) {
     return [
       CategoryCard(
+        context: context,
         title: 'My Groups',
         description: 'All your groups',
         icon: Icons.group,
@@ -867,6 +879,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       CategoryCard(
+        context: context,
         title: 'As Member',
         description: 'Groups you joined',
         icon: Icons.person,
@@ -878,6 +891,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       CategoryCard(
+        context: context,
         title: 'As Agent',
         description: 'Groups you manage',
         icon: Icons.admin_panel_settings,
@@ -891,11 +905,12 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  Widget _buildNextPaymentsList() {
+  Widget _buildNextPaymentsList(BuildContext context) {
+    final responsive = Responsive(context);
     if (_isLoadingGroups) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20.0),
+          padding: responsive.paddingAll(20.0),
           child: CircularProgressIndicator(
             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2D7A4F)),
           ),
@@ -904,13 +919,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_nextPayments.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20.0),
+          padding: responsive.paddingAll(20.0),
           child: Text(
             'No upcoming payments',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: responsive.fontSize(14),
               fontWeight: FontWeight.w400,
               color: Color(0xFFA5A5A5),
             ),
@@ -934,8 +949,9 @@ class _HomeScreenState extends State<HomeScreen> {
             final membersText = memberCount == 1 ? '1 member' : '$memberCount members';
             
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: responsive.spacing(12)),
               child: _buildPaymentItem(
+                context: context,
                 date: formattedDate,
                 group: groupName,
                 members: membersText,
@@ -948,45 +964,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPaymentItem({
+    required BuildContext context,
     required String date,
     required String group,
     required String members,
   }) {
+    final responsive = Responsive(context);
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: responsive.paddingAll(4),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: responsive.width(44),
+            height: responsive.height(44),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF2D7A4F),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.calendar_today,
               color: Colors.white,
-              size: 20,
+              size: responsive.width(20),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: responsive.spacing(12)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   date,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(15),
                     fontWeight: FontWeight.w600,
                     color: Color(0xFFD2D2D2),
                   ),
                 ),
-                const SizedBox(height: 2),
+                SizedBox(height: responsive.spacing(2)),
                 Text(
                   group,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(13),
                     fontWeight: FontWeight.w400,
                     color: Color(0xFFA5A5A5),
                   ),
@@ -996,8 +1014,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Text(
             members,
-            style: const TextStyle(
-              fontSize: 13,
+            style: TextStyle(
+              fontSize: responsive.fontSize(13),
               fontWeight: FontWeight.w500,
               color: Color(0xFFD2D2D2),
             ),
@@ -1010,6 +1028,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class CategoryCard extends StatelessWidget {
+  final BuildContext context;
   final String title;
   final String description;
   final IconData icon;
@@ -1020,6 +1039,7 @@ class CategoryCard extends StatelessWidget {
 
   const CategoryCard({
     super.key,
+    required this.context,
     required this.title,
     required this.description,
     required this.icon,
@@ -1031,16 +1051,17 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: isLast
-            ? const EdgeInsets.symmetric(horizontal: 20)
-            : const EdgeInsets.only(left: 20),
+            ? responsive.paddingSymmetric(horizontal: 20)
+            : responsive.paddingOnly(left: 20),
         width: double.infinity,
-        height: 180,
+        height: responsive.height(180),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(responsive.radius(20)),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -1049,22 +1070,22 @@ class CategoryCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF3DA861).withOpacity(0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+              blurRadius: responsive.spacing(16),
+              offset: Offset(0, responsive.spacing(8)),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(responsive.radius(20)),
           child: Stack(
             children: [
               // Large decorative curved shape
               Positioned(
-                right: -100,
-                top: -50,
+                right: -responsive.width(100),
+                top: -responsive.height(50),
                 child: Container(
-                  width: 300,
-                  height: 300,
+                  width: responsive.width(300),
+                  height: responsive.height(300),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
@@ -1080,11 +1101,11 @@ class CategoryCard extends StatelessWidget {
               ),
               // Additional subtle circles for depth
               Positioned(
-                left: -60,
-                bottom: -80,
+                left: -responsive.width(60),
+                bottom: -responsive.height(80),
                 child: Container(
-                  width: 200,
-                  height: 200,
+                  width: responsive.width(200),
+                  height: responsive.height(200),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withOpacity(0.08),
@@ -1093,18 +1114,18 @@ class CategoryCard extends StatelessWidget {
               ),
               // Content
               Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: responsive.paddingAll(20.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(
-                            fontSize: 24,
+                          style: TextStyle(
+                            fontSize: responsive.fontSize(24),
                             fontWeight: FontWeight.w700,
                             color: Colors.black87,
                             letterSpacing: -0.5,
@@ -1112,10 +1133,11 @@ class CategoryCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
+                        SizedBox(height: responsive.spacing(4)),
                         isLoading
-                            ? const SizedBox(
-                                width: 215,
-                                height: 20,
+                            ? SizedBox(
+                                width: responsive.width(215),
+                                height: responsive.height(20),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   valueColor: AlwaysStoppedAnimation<Color>(Colors.black54),
@@ -1123,8 +1145,8 @@ class CategoryCard extends StatelessWidget {
                               )
                             : Text(
                                 count != null ? '$count Groups' : '0 Groups',
-                                style: const TextStyle(
-                                  fontSize: 32,
+                                style: TextStyle(
+                                  fontSize: responsive.fontSize(32),
                                   fontWeight: FontWeight.w800,
                                   color: Colors.black87,
                                   letterSpacing: -0.8,
@@ -1134,31 +1156,37 @@ class CategoryCard extends StatelessWidget {
                               ),
                       ],
                     ),
+                    Expanded(
+                      child: SizedBox.shrink(),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black87,
-                            letterSpacing: 0.2,
+                        Flexible(
+                          child: Text(
+                            description,
+                            style: TextStyle(
+                              fontSize: responsive.fontSize(14),
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                              letterSpacing: 0.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
                         ),
+                        SizedBox(width: responsive.spacing(8)),
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: responsive.paddingAll(12),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(responsive.radius(12)),
                           ),
                           child: Icon(
                             icon,
                             color: Colors.black87,
-                            size: 28,
+                            size: responsive.width(28),
                           ),
                         ),
                       ],

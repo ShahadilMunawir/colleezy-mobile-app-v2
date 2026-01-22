@@ -6,6 +6,7 @@ import 'member_details.dart';
 import 'group_info_screen.dart';
 import 'agent_members_screen.dart';
 import '../services/api_service.dart';
+import '../../utils/responsive.dart';
 
 /// Country data for the country code picker
 class _Country {
@@ -167,6 +168,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
       body: SafeArea(
@@ -175,23 +177,23 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             // Header
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Color(0xFF141414),
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(24),
-                  bottomRight: Radius.circular(24),
+                  bottomLeft: Radius.circular(responsive.radius(24)),
+                  bottomRight: Radius.circular(responsive.radius(24)),
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(0, 16, 20, 20),
+                padding: responsive.paddingFromLTRB(0, 16, 20, 20),
                 child: Row(
                   children: [
                     IconButton(
                       padding: EdgeInsets.zero,
                       icon: SvgPicture.asset(
                         'assets/svg/back.svg',
-                        width: 32,
-                        height: 32,
+                        width: responsive.width(32),
+                        height: responsive.height(32),
                         colorFilter: const ColorFilter.mode(
                           Colors.white,
                           BlendMode.srcIn,
@@ -216,19 +218,19 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             },
                             child: Text(
                               widget.groupName,
-                              style: const TextStyle(
-                                fontSize: 18,
+                              style: TextStyle(
+                                fontSize: responsive.fontSize(18),
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFFEFEEEC),
                                 fontFamily: 'DM Sans',
                               ),
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          SizedBox(height: responsive.spacing(2)),
                           Text(
                             '${_allMembers.length} ${_allMembers.length == 1 ? 'member' : 'members'}',
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: responsive.fontSize(14),
                               fontWeight: FontWeight.w400,
                               color: Color(0xFFA5A5A5),
                               fontFamily: 'DM Sans',
@@ -243,19 +245,19 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             ),
             // Tabs
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: responsive.paddingSymmetric(horizontal: 20, vertical: 16),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF121212),
-                  borderRadius: BorderRadius.circular(30),
+                  color: Color(0xFF121212),
+                  borderRadius: BorderRadius.circular(responsive.radius(30)),
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: _buildTab('Members', 0),
+                      child: _buildTab(context, 'Members', 0),
                     ),
                     Expanded(
-                      child: _buildTab('Agents', 1),
+                      child: _buildTab(context, 'Agents', 1),
                     ),
                   ],
                 ),
@@ -263,11 +265,11 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             ),
             // Members List
             Expanded(
-              child: _buildMembersList(),
+              child: _buildMembersList(context),
             ),
             // Add Member/Agent Button
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: responsive.paddingAll(20),
               child: Center(
                 child: IntrinsicWidth(
                     child: ElevatedButton(
@@ -282,20 +284,20 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                       backgroundColor: const Color(0xFF2D7A4F),
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(
+                      padding: responsive.paddingSymmetric(
                         horizontal: 20,
                         vertical: 20,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(40),
+                        borderRadius: BorderRadius.circular(responsive.radius(40)),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 24,
-                          height: 24,
+                          width: responsive.width(24),
+                          height: responsive.height(24),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
@@ -303,17 +305,17 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.add,
-                            size: 16,
+                            size: responsive.width(16),
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: responsive.spacing(12)),
                         Text(
                           _selectedTab == 0 ? 'Add Member' : 'Add Agent',
-                          style: const TextStyle(
-                            fontSize: 18,
+                          style: TextStyle(
+                            fontSize: responsive.fontSize(18),
                             fontWeight: FontWeight.w600,
                             fontFamily: 'DM Sans',
                           ),
@@ -330,7 +332,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  Widget _buildMembersList() {
+  Widget _buildMembersList(BuildContext context) {
+    final responsive = Responsive(context);
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -346,19 +349,19 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.red,
-                fontSize: 14,
+                fontSize: responsive.fontSize(14),
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsive.spacing(16)),
             ElevatedButton(
               onPressed: _loadMembers,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2D7A4F),
               ),
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -370,27 +373,27 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.people_outline,
-              size: 64,
+              size: responsive.width(64),
               color: Color(0xFFA5A5A5),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsive.spacing(16)),
             Text(
               _selectedTab == 0 ? 'No members yet' : 'No agents yet',
-              style: const TextStyle(
-                fontSize: 18,
+              style: TextStyle(
+                fontSize: responsive.fontSize(18),
                 fontWeight: FontWeight.w600,
                 color: Color(0xFFF2F2F2),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: responsive.spacing(8)),
             Text(
               _selectedTab == 0
                   ? 'Add members to get started'
                   : 'No agents in this group',
-              style: const TextStyle(
-                fontSize: 14,
+              style: TextStyle(
+                fontSize: responsive.fontSize(14),
                 fontWeight: FontWeight.w400,
                 color: Color(0xFFA5A5A5),
               ),
@@ -405,7 +408,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       onRefresh: _loadMembers,
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: responsive.paddingSymmetric(horizontal: 20),
         itemCount: _displayedMembers.length,
         itemBuilder: (context, index) {
           final member = _displayedMembers[index];
@@ -432,6 +435,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           }
           
           return _buildMemberItem(
+            context: context,
             memberId: member['id'] as int,
             userId: member['user_id'] as int,
             name: displayName,
@@ -471,6 +475,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   Widget _buildMemberItem({
+    required BuildContext context,
     required int memberId,
     required int userId,
     required String name,
@@ -481,6 +486,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     required bool isAgent,
     required int memberNumber,
   }) {
+    final responsive = Responsive(context);
     return InkWell(
       onTap: () {
         // If in Agents tab and tapping an agent, navigate to AgentMembersScreen
@@ -515,13 +521,13 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: responsive.paddingSymmetric(vertical: 12, horizontal: 16),
         child: Row(
           children: [
             // Avatar
             Container(
-              width: 48,
-              height: 48,
+              width: responsive.width(48),
+              height: responsive.height(48),
               decoration: BoxDecoration(
                 color: avatarColor,
                 shape: BoxShape.circle,
@@ -529,8 +535,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
               child: Center(
                 child: Text(
                   initial,
-                  style: const TextStyle(
-                    fontSize: 20,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(20),
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     fontFamily: 'DM Sans',
@@ -538,7 +544,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: responsive.spacing(16)),
             // Name and role with member number
             Expanded(
               child: Column(
@@ -546,18 +552,18 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(16),
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                       fontFamily: 'DM Sans',
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: responsive.spacing(4)),
                   Text(
                     '#$memberNumber • $role',
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(14),
                       fontWeight: FontWeight.w400,
                       color: Color(0xFFA5A5A5),
                       fontFamily: 'DM Sans',
@@ -573,11 +579,11 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
               },
               behavior: HitTestBehavior.opaque,
               child: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(
+                padding: responsive.paddingAll(8),
+                child: Icon(
                   Icons.more_vert,
                   color: Color(0xFFA5A5A5),
-                  size: 24,
+                  size: responsive.width(24),
                 ),
               ),
             ),
@@ -587,7 +593,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
     );
   }
 
-  Widget _buildTab(String label, int index) {
+  Widget _buildTab(BuildContext context, String label, int index) {
+    final responsive = Responsive(context);
     final isSelected = _selectedTab == index;
     return GestureDetector(
       onTap: () {
@@ -596,18 +603,18 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: responsive.paddingSymmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xCC232220) : Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
+          color: isSelected ? Color(0xCC232220) : Colors.transparent,
+          borderRadius: BorderRadius.circular(responsive.radius(30)),
         ),
         child: Center(
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: responsive.fontSize(16),
               fontWeight: FontWeight.w600,
-              color: isSelected ? Colors.white : const Color(0xFFA5A5A5),
+              color: isSelected ? Colors.white : Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),

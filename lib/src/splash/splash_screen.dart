@@ -6,6 +6,7 @@ import '../login/login.dart';
 import '../dashboard/dashboard.dart';
 import '../profile/profile_screen.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../../utils/responsive.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -119,6 +120,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Center(
@@ -132,8 +134,8 @@ class _SplashScreenState extends State<SplashScreen>
                 return FadeTransition(
                   opacity: _logoFadeAnimation,
                   child: SizedBox(
-                    width: 140,
-                    height: 140,
+                    width: responsive.width(140),
+                    height: responsive.height(140),
                     child: SvgPicture.asset(
                       'assets/svg/logo.svg',                    
                     ),

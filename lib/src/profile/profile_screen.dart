@@ -3,6 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../../utils/responsive.dart';
+
+/// Minimal country data for the country code picker
+class Country {
+  final String name;
+  final String code;
+  final String dialCode;
+  final String flag;
+  final int phoneLength; // Expected phone number length (without country code)
+
+  const Country({
+    required this.name,
+    required this.code,
+    required this.dialCode,
+    required this.flag,
+    required this.phoneLength,
+  });
+}
+
+const List<Country> _countries = [
+  Country(name: 'United States', code: 'US', dialCode: '+1', flag: '🇺🇸', phoneLength: 10),
+  Country(name: 'United Kingdom', code: 'GB', dialCode: '+44', flag: '🇬🇧', phoneLength: 10),
+  Country(name: 'India', code: 'IN', dialCode: '+91', flag: '🇮🇳', phoneLength: 10),
+  Country(name: 'Canada', code: 'CA', dialCode: '+1', flag: '🇨🇦', phoneLength: 10),
+  Country(name: 'Australia', code: 'AU', dialCode: '+61', flag: '🇦🇺', phoneLength: 9),
+  Country(name: 'Germany', code: 'DE', dialCode: '+49', flag: '🇩🇪', phoneLength: 11),
+  Country(name: 'France', code: 'FR', dialCode: '+33', flag: '🇫🇷', phoneLength: 9),
+  Country(name: 'Japan', code: 'JP', dialCode: '+81', flag: '🇯🇵', phoneLength: 10),
+  Country(name: 'China', code: 'CN', dialCode: '+86', flag: '🇨🇳', phoneLength: 11),
+  Country(name: 'Brazil', code: 'BR', dialCode: '+55', flag: '🇧🇷', phoneLength: 11),
+  Country(name: 'Mexico', code: 'MX', dialCode: '+52', flag: '🇲🇽', phoneLength: 10),
+  Country(name: 'South Korea', code: 'KR', dialCode: '+82', flag: '🇰🇷', phoneLength: 10),
+  Country(name: 'Italy', code: 'IT', dialCode: '+39', flag: '🇮🇹', phoneLength: 10),
+  Country(name: 'Spain', code: 'ES', dialCode: '+34', flag: '🇪🇸', phoneLength: 9),
+  Country(name: 'Netherlands', code: 'NL', dialCode: '+31', flag: '🇳🇱', phoneLength: 9),
+  Country(name: 'Singapore', code: 'SG', dialCode: '+65', flag: '🇸🇬', phoneLength: 8),
+  Country(name: 'UAE', code: 'AE', dialCode: '+971', flag: '🇦🇪', phoneLength: 9),
+  Country(name: 'Saudi Arabia', code: 'SA', dialCode: '+966', flag: '🇸🇦', phoneLength: 9),
+  Country(name: 'South Africa', code: 'ZA', dialCode: '+27', flag: '🇿🇦', phoneLength: 9),
+  Country(name: 'Nigeria', code: 'NG', dialCode: '+234', flag: '🇳🇬', phoneLength: 10),
+  Country(name: 'Pakistan', code: 'PK', dialCode: '+92', flag: '🇵🇰', phoneLength: 10),
+  Country(name: 'Bangladesh', code: 'BD', dialCode: '+880', flag: '🇧🇩', phoneLength: 10),
+  Country(name: 'Indonesia', code: 'ID', dialCode: '+62', flag: '🇮🇩', phoneLength: 11),
+  Country(name: 'Philippines', code: 'PH', dialCode: '+63', flag: '🇵🇭', phoneLength: 10),
+  Country(name: 'Vietnam', code: 'VN', dialCode: '+84', flag: '🇻🇳', phoneLength: 9),
+  Country(name: 'Thailand', code: 'TH', dialCode: '+66', flag: '🇹🇭', phoneLength: 9),
+  Country(name: 'Malaysia', code: 'MY', dialCode: '+60', flag: '🇲🇾', phoneLength: 10),
+  Country(name: 'Russia', code: 'RU', dialCode: '+7', flag: '🇷🇺', phoneLength: 10),
+  Country(name: 'Turkey', code: 'TR', dialCode: '+90', flag: '🇹🇷', phoneLength: 10),
+  Country(name: 'Egypt', code: 'EG', dialCode: '+20', flag: '🇪🇬', phoneLength: 10),
+];
 
 class ProfileScreen extends StatefulWidget {
   final bool showBackButton;
@@ -29,6 +80,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _initial;
   File? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
+  Country _selectedCountry = _countries[2]; // Default to India
+
+  void _parsePhoneNumber(String phoneNumber) {
+    // Try to match country code from phone number
+    for (var country in _countries) {
+      if (phoneNumber.startsWith(country.dialCode)) {
+        setState(() {
+          _selectedCountry = country;
+        });
+        break;
+      }
+    }
+  }
+
+  void _showCountryPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _CountryPickerSheet(
+        countries: _countries,
+        selectedCountry: _selectedCountry,
+        onSelect: (country) {
+          setState(() {
+            _selectedCountry = country;
+            // Update maxLength when country changes
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
 
   Future<void> _handleLogout() async {
     // Show confirmation dialog
@@ -126,6 +209,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         email = (backendEmail != null && backendEmail.isNotEmpty) ? backendEmail : email;
         phone = (backendPhone != null && backendPhone.isNotEmpty) ? backendPhone : phone;
         
+        // Parse phone number to extract country code and set selected country
+        if (phone != null && phone.isNotEmpty) {
+          _parsePhoneNumber(phone);
+        }
+        
         if (backendPhotoUrl != null && backendPhotoUrl.isNotEmpty) {
           // Convert relative URL to full URL if needed
           if (backendPhotoUrl.startsWith('/')) {
@@ -153,11 +241,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
       initial = email[0].toUpperCase();
     }
 
+    // Parse phone number to extract country code and phone number separately
+    String phoneWithoutCode = '';
+    if (phone != null && phone.isNotEmpty) {
+      // Try to find matching country code
+      bool foundMatch = false;
+      for (var country in _countries) {
+        if (phone.startsWith(country.dialCode)) {
+          phoneWithoutCode = phone.substring(country.dialCode.length).trim();
+          if (mounted) {
+            setState(() {
+              _selectedCountry = country;
+            });
+          }
+          foundMatch = true;
+          break;
+        }
+      }
+      // If no country code match found, use the full phone number
+      if (!foundMatch) {
+        phoneWithoutCode = phone;
+      }
+    }
+
     if (mounted) {
       setState(() {
         _nameController.text = displayName ?? '';
         _emailController.text = email ?? '';
-        _phoneController.text = phone ?? '';
+        _phoneController.text = phoneWithoutCode;
         _userPhotoUrl = photoUrl;
         _initial = initial;
         _isLoading = false;
@@ -166,32 +277,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showImagePickerOptions() async {
+    final responsive = Responsive(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF2A2A2A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(responsive.radius(20))),
       ),
       builder: (BuildContext context) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 12),
+              SizedBox(height: responsive.spacing(12)),
               Container(
-                width: 40,
-                height: 4,
+                width: responsive.width(40),
+                height: responsive.height(4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFA5A5A5),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(responsive.radius(2)),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: responsive.spacing(20)),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFF2D7A4F)),
-                title: const Text(
+                leading: Icon(Icons.photo_library, color: Color(0xFF2D7A4F), size: responsive.width(24)),
+                title: Text(
                   'Choose from Gallery',
-                  style: TextStyle(color: Colors.white, fontFamily: 'DM Sans'),
+                  style: TextStyle(color: Colors.white, fontFamily: 'DM Sans', fontSize: responsive.fontSize(16)),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -199,10 +311,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFF2D7A4F)),
-                title: const Text(
+                leading: Icon(Icons.camera_alt, color: Color(0xFF2D7A4F), size: responsive.width(24)),
+                title: Text(
                   'Take Photo',
-                  style: TextStyle(color: Colors.white, fontFamily: 'DM Sans'),
+                  style: TextStyle(color: Colors.white, fontFamily: 'DM Sans', fontSize: responsive.fontSize(16)),
                 ),
                 onTap: () {
                   Navigator.pop(context);
@@ -211,10 +323,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               if (_selectedImage != null)
                 ListTile(
-                  leading: const Icon(Icons.delete, color: Colors.red),
-                  title: const Text(
+                  leading: Icon(Icons.delete, color: Colors.red, size: responsive.width(24)),
+                  title: Text(
                     'Remove Photo',
-                    style: TextStyle(color: Colors.red, fontFamily: 'DM Sans'),
+                    style: TextStyle(color: Colors.red, fontFamily: 'DM Sans', fontSize: responsive.fontSize(16)),
                   ),
                   onTap: () {
                     Navigator.pop(context);
@@ -223,7 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     });
                   },
                 ),
-              const SizedBox(height: 20),
+              SizedBox(height: responsive.spacing(20)),
             ],
           ),
         );
@@ -305,6 +417,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
 
+      // Validate phone number is required
+      final phoneNumber = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+      if (phoneNumber.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Phone number is required. Please enter your phone number.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() {
+            _isSaving = false;
+          });
+        }
+        return;
+      }
+
       String? photoUrl;
       
       // Upload image first if one is selected
@@ -331,11 +460,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
 
+      // Prepare phone number with country code (phoneNumber already validated above)
+      final phoneWithCountryCode = '${_selectedCountry.dialCode}$phoneNumber';
+
       // Update user profile
       final result = await _apiService.updateCurrentUser(
         name: _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
         email: _emailController.text.trim().isNotEmpty ? _emailController.text.trim() : null,
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
+        phone: phoneWithCountryCode,
         photoUrl: photoUrl,
       );
 
@@ -355,7 +487,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
         
         // Check if profile is now complete (has phone number)
-        final phone = _phoneController.text.trim();
+        final phoneNumber = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
+        final phone = phoneNumber.isNotEmpty ? '${_selectedCountry.dialCode}$phoneNumber' : '';
         if (phone.isNotEmpty) {
           // Profile is complete, check if we should navigate to home
           // Only navigate if we came from login (not from home screen)
@@ -415,6 +548,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -433,39 +567,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
               // Back Button (only shown when navigated from home screen)
               if (widget.showBackButton) ...[
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: responsive.paddingFromLTRB(20, 20, 20, 0),
                   child: Row(
                     children: [
                       GestureDetector(
                         onTap: () => Navigator.pop(context),
                         child: Container(
-                          width: 40,
-                          height: 40,
+                          width: responsive.width(40),
+                          height: responsive.height(40),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back,
                             color: Colors.white,
-                            size: 24,
+                            size: responsive.width(24),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: responsive.spacing(20)),
               ] else
-                const SizedBox(height: 40),
+                SizedBox(height: responsive.spacing(40)),
               // Avatar Section
               Stack(
                 alignment: Alignment.center,
                 children: [
                   // Large Avatar Circle
                   Container(
-                    width: 120,
-                    height: 120,
+                    width: responsive.width(120),
+                    height: responsive.height(120),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2D7A4F),
                       shape: BoxShape.circle,
@@ -489,8 +623,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? Center(
                             child: Text(
                               _initial ?? '?',
-                              style: const TextStyle(
-                                fontSize: 48,
+                              style: TextStyle(
+                                fontSize: responsive.fontSize(48),
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                                 fontFamily: 'DM Sans',
@@ -506,32 +640,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: GestureDetector(
                       onTap: _showImagePickerOptions,
                       child: Container(
-                        width: 36,
-                        height: 36,
+                        width: responsive.width(36),
+                        height: responsive.height(36),
                         decoration: const BoxDecoration(
                           color: Color(0xFF2D7A4F),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add,
                           color: Colors.white,
-                          size: 20,
+                          size: responsive.width(20),
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 60),
+              SizedBox(height: responsive.spacing(60)),
               // Form Section
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Color(0xFF0A1A14),
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(30),
-                      topRight: Radius.circular(30),
+                      topLeft: Radius.circular(responsive.radius(30)),
+                      topRight: Radius.circular(responsive.radius(30)),
                     ),
                   ),
                   child: Column(
@@ -539,44 +673,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // Scrollable Form Fields
                       Expanded(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                          padding: responsive.paddingFromLTRB(24, 24, 24, 0),
                           child: Column(
                             children: [
                               // Name Field
                               _buildInputField(
+                                context: context,
                                 icon: Icons.person,
                                 label: 'Name',
                                 controller: _nameController,
                               ),
-                              const SizedBox(height: 20),
+                              SizedBox(height: responsive.spacing(20)),
                               // Email Field
                               _buildInputField(
+                                context: context,
                                 icon: Icons.email,
                                 label: 'Email (optional)',
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                               ),
-                              const SizedBox(height: 20),
-                              // Phone Field
-                              _buildInputField(
-                                icon: Icons.phone,
-                                label: 'Phone',
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                              ),
+                              SizedBox(height: responsive.spacing(20)),
+                              // Phone Field with Country Picker
+                              _buildPhoneField(context),
                             ],
                           ),
                         ),
                       ),
                       // Fixed Bottom Buttons
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                        padding: responsive.paddingFromLTRB(24, 16, 24, 24),
                         child: Column(
                           children: [
                             // Save Button
                             SizedBox(
                               width: double.infinity,
-                              height: 56,
+                              height: responsive.height(56),
                               child: ElevatedButton(
                                 onPressed: _isSaving || _isLoading ? null : _handleSave,
                                 style: ElevatedButton.styleFrom(
@@ -584,61 +715,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(responsive.radius(12)),
                                   ),
                                   disabledBackgroundColor: const Color(0xFF6B7280),
                                 ),
                                 child: _isSaving
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
+                                    ? SizedBox(
+                                        width: responsive.width(24),
+                                        height: responsive.height(24),
                                         child: CircularProgressIndicator(
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Text(
+                                    : Text(
                                         'Save',
                                         style: TextStyle(
-                                          fontSize: 18,
+                                          fontSize: responsive.fontSize(18),
                                           fontWeight: FontWeight.w600,
                                           fontFamily: 'DM Sans',
                                         ),
                                       ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: responsive.spacing(12)),
                             // Logout Button
                             SizedBox(
                               width: double.infinity,
-                              height: 56,
+                              height: responsive.height(56),
                               child: ElevatedButton(
                                 onPressed: _isLoggingOut ? null : _handleLogout,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   foregroundColor: Colors.red,
                                   elevation: 0,
-                                  side: const BorderSide(
+                                  side: BorderSide(
                                     color: Colors.red,
                                     width: 1.5,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(responsive.radius(12)),
                                   ),
                                 ),
                                 child: _isLoggingOut
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
+                                    ? SizedBox(
+                                        width: responsive.width(24),
+                                        height: responsive.height(24),
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
                                           valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                                         ),
                                       )
-                                    : const Text(
+                                    : Text(
                                         'Logout',
                                         style: TextStyle(
-                                          fontSize: 18,
+                                          fontSize: responsive.fontSize(18),
                                           fontWeight: FontWeight.w600,
                                           fontFamily: 'DM Sans',
                                         ),
@@ -659,59 +790,358 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildPhoneField(BuildContext context) {
+    final responsive = Responsive(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
+      ),
+      child: Row(
+        children: [
+          // Country Code Picker
+          GestureDetector(
+            onTap: _showCountryPicker,
+            child: Container(
+              padding: responsive.paddingSymmetric(horizontal: 10, vertical: 16),
+              decoration: BoxDecoration(
+                border: Border(
+                  right: BorderSide(
+                    color: Color(0xFF2A2A2A),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedCountry.flag,
+                    style: TextStyle(fontSize: responsive.fontSize(18)),
+                  ),
+                  SizedBox(width: responsive.spacing(4)),
+                  Text(
+                    _selectedCountry.dialCode,
+                    style: TextStyle(
+                      color: Color(0xFFEFEEEC),
+                      fontSize: responsive.fontSize(14),
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'DM Sans',
+                    ),
+                  ),
+                  SizedBox(width: responsive.spacing(2)),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Color(0xFF6B7280),
+                    size: responsive.width(18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Phone Number Input
+          Expanded(
+            child: TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              maxLength: _selectedCountry.phoneLength,
+              style: TextStyle(
+                color: Color(0xFFEFEEEC),
+                fontSize: responsive.fontSize(15),
+                fontWeight: FontWeight.w400,
+                fontFamily: 'DM Sans',
+              ),
+              decoration: InputDecoration(
+                hintText: 'Phone Number (${_selectedCountry.phoneLength} digits)',
+                hintStyle: TextStyle(
+                  color: Color(0xFFD0CDC6),
+                  fontSize: responsive.fontSize(15),
+                  fontWeight: FontWeight.w400,
+                ),
+                counterText: '', // Hide the character counter
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(responsive.radius(12)),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(responsive.radius(12)),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(responsive.radius(12)),
+                  borderSide: BorderSide(
+                    color: Color(0xFF2D7A4F),
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.transparent,
+                contentPadding: responsive.paddingSymmetric(
+                  horizontal: 16,
+                  vertical: 18,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputField({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required TextEditingController controller,
     TextInputType? keyboardType,
   }) {
+    final responsive = Responsive(context);
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
       ),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 16,
+          fontSize: responsive.fontSize(16),
           fontFamily: 'DM Sans',
         ),
         decoration: InputDecoration(
           prefixIcon: Icon(
             icon,
             color: const Color(0xFF2D7A4F),
-            size: 24,
+            size: responsive.width(24),
           ),
           hintText: label,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: responsive.fontSize(16),
             fontFamily: 'DM Sans',
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(responsive.radius(12)),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(responsive.radius(12)),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
+            borderRadius: BorderRadius.circular(responsive.radius(12)),
+            borderSide: BorderSide(
               color: Color(0xFF2D7A4F),
               width: 2,
             ),
           ),
           filled: true,
           fillColor: const Color(0xFF141414),
-          contentPadding: const EdgeInsets.symmetric(
+          contentPadding: responsive.paddingSymmetric(
             horizontal: 16,
             vertical: 16,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CountryPickerSheet extends StatefulWidget {
+  final List<Country> countries;
+  final Country selectedCountry;
+  final Function(Country) onSelect;
+
+  const _CountryPickerSheet({
+    required this.countries,
+    required this.selectedCountry,
+    required this.onSelect,
+  });
+
+  @override
+  State<_CountryPickerSheet> createState() => _CountryPickerSheetState();
+}
+
+class _CountryPickerSheetState extends State<_CountryPickerSheet> {
+  late TextEditingController _searchController;
+  late List<Country> _filteredCountries;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _filteredCountries = widget.countries;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCountries(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCountries = widget.countries;
+      } else {
+        _filteredCountries = widget.countries
+            .where((c) =>
+                c.name.toLowerCase().contains(query.toLowerCase()) ||
+                c.dialCode.contains(query) ||
+                c.code.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final responsive = Responsive(context);
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.65,
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2A2A),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(responsive.radius(24)),
+          topRight: Radius.circular(responsive.radius(24)),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: EdgeInsets.only(top: responsive.spacing(12)),
+            width: responsive.width(40),
+            height: responsive.height(4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6B7280),
+              borderRadius: BorderRadius.circular(responsive.radius(2)),
+            ),
+          ),
+          // Title
+          Padding(
+            padding: responsive.paddingAll(20),
+            child: Text(
+              'Select Country',
+              style: TextStyle(
+                fontSize: responsive.fontSize(18),
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFEFEEEC),
+                fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: responsive.paddingSymmetric(horizontal: 20),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(responsive.radius(12)),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _filterCountries,
+                style: TextStyle(
+                  color: Color(0xFFEFEEEC),
+                  fontSize: responsive.fontSize(15),
+                  fontFamily: 'DM Sans',
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search country...',
+                  hintStyle: TextStyle(
+                    color: Color(0xFFD0CDC6),
+                    fontSize: responsive.fontSize(15),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF6B7280),
+                    size: responsive.width(22),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(responsive.radius(12)),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: responsive.paddingSymmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: responsive.spacing(12)),
+          // Country list
+          Expanded(
+            child: ListView.builder(
+              padding: responsive.paddingSymmetric(horizontal: 12),
+              itemCount: _filteredCountries.length,
+              itemBuilder: (context, index) {
+                final country = _filteredCountries[index];
+                final isSelected = country.code == widget.selectedCountry.code;
+                
+                return GestureDetector(
+                  onTap: () => widget.onSelect(country),
+                  child: Container(
+                    margin: responsive.paddingSymmetric(vertical: 2),
+                    padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? const Color(0xFF2D7A4F).withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(responsive.radius(10)),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          country.flag,
+                          style: TextStyle(fontSize: responsive.fontSize(24)),
+                        ),
+                        SizedBox(width: responsive.spacing(14)),
+                        Expanded(
+                          child: Text(
+                            country.name,
+                            style: TextStyle(
+                              color: isSelected 
+                                  ? const Color(0xFF2D7A4F) 
+                                  : const Color(0xFFEFEEEC),
+                              fontSize: responsive.fontSize(15),
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        ),
+                        Text(
+                          country.dialCode,
+                          style: TextStyle(
+                            color: isSelected 
+                                ? const Color(0xFF2D7A4F) 
+                                : const Color(0xFFD0CDC6),
+                            fontSize: responsive.fontSize(14),
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'DM Sans',
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          SizedBox(width: responsive.spacing(10)),
+                          Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF2D7A4F),
+                            size: responsive.width(20),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

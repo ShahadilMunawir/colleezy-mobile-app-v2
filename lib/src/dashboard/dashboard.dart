@@ -4,6 +4,7 @@ import '../groups/groups.dart';
 import '../draw_selection/draw_selection_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'history_screen.dart';
+import '../../utils/responsive.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -77,6 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -89,10 +91,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Positioned(
               left: 0,
               right: 0,
-              bottom: 20,
+              bottom: responsive.padding(20),
               child: Center(
                 child: SizedBox(
-                  width: 300,
+                  width: responsive.width(300),
                   child: CustomBottomNavBar(
                     selectedIndex: _selectedIndex,
                     onItemSelected: _onItemSelected,

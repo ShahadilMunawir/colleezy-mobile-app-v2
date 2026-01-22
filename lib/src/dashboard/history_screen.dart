@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import 'all_dues_screen.dart';
+import '../../utils/responsive.dart';
 
 class HistoryScreen extends StatefulWidget {
   final Function(VoidCallback)? onVisible;
@@ -232,6 +233,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = Responsive(context);
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
       body: SafeArea(
@@ -244,14 +246,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 color: Color(0xFF141414),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                padding: responsive.paddingFromLTRB(20, 16, 20, 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'History',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: responsive.fontSize(24),
                         fontWeight: FontWeight.w700,
                         color: Color(0xFFEFEEEC),
                       ),
@@ -265,15 +267,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                         );
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.people_outline,
                         color: Color(0xFF2D7A4F),
-                        size: 20,
+                        size: responsive.width(20),
                       ),
-                      label: const Text(
+                      label: Text(
                         'All Dues',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: responsive.fontSize(14),
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF2D7A4F),
                           fontFamily: 'DM Sans',
@@ -286,11 +288,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             // Filters
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: responsive.paddingAll(20),
               child: Row(
                 children: [
                   Expanded(
                     child: _buildFilterDropdown(
+                      context: context,
                       value: _selectedDate,
                       hint: 'Date',
                       items: _availableDates,
@@ -302,16 +305,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: responsive.spacing(12)),
                   Expanded(
-                    child: _buildGroupFilterDropdown(),
+                    child: _buildGroupFilterDropdown(context),
                   ),
                 ],
               ),
             ),
             // Transactions List
             Expanded(
-              child: _buildTransactionsList(),
+              child: _buildTransactionsList(context),
             ),
           ],
         ),
@@ -319,35 +322,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildGroupFilterDropdown() {
+  Widget _buildGroupFilterDropdown(BuildContext context) {
+    final responsive = Responsive(context);
     final groupItems = ['All Groups', ..._groups.map((g) => g['name'] as String).toList()];
     
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedGroupName,
           isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          hint: const Text(
+          padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
+          hint: Text(
             'Group',
             style: TextStyle(
-              fontSize: 15,
+              fontSize: responsive.fontSize(15),
               fontWeight: FontWeight.w400,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
             color: Color(0xFFA5A5A5),
-            size: 24,
+            size: responsive.width(24),
           ),
-          style: const TextStyle(
-            fontSize: 15,
+          style: TextStyle(
+            fontSize: responsive.fontSize(15),
             fontWeight: FontWeight.w400,
             color: Color(0xFFD0CDC6),
             fontFamily: 'DM Sans',
@@ -378,37 +382,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildFilterDropdown({
+    required BuildContext context,
     required String? value,
     required String hint,
     required List<String> items,
     required Function(String?) onChanged,
   }) {
+    final responsive = Responsive(context);
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(responsive.radius(12)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           isExpanded: true,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: responsive.paddingSymmetric(horizontal: 16, vertical: 14),
           hint: Text(
             hint,
-            style: const TextStyle(
-              fontSize: 15,
+            style: TextStyle(
+              fontSize: responsive.fontSize(15),
               fontWeight: FontWeight.w400,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
             ),
           ),
-          icon: const Icon(
+          icon: Icon(
             Icons.keyboard_arrow_down,
             color: Color(0xFFA5A5A5),
-            size: 24,
+            size: responsive.width(24),
           ),
-          style: const TextStyle(
-            fontSize: 15,
+          style: TextStyle(
+            fontSize: responsive.fontSize(15),
             fontWeight: FontWeight.w400,
             color: Color(0xFFD0CDC6),
             fontFamily: 'DM Sans',
@@ -426,7 +432,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _buildTransactionsList() {
+  Widget _buildTransactionsList(BuildContext context) {
+    final responsive = Responsive(context);
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -442,13 +449,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             Text(
               _errorMessage!,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.red,
-                fontSize: 14,
+                fontSize: responsive.fontSize(14),
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: responsive.spacing(16)),
             ElevatedButton(
               onPressed: () {
                 _loadTransactions();
@@ -456,7 +463,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2D7A4F),
               ),
-              child: const Text('Retry'),
+              child: Text('Retry'),
             ),
           ],
         ),
@@ -470,25 +477,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.history_outlined,
-              size: 64,
+              size: responsive.width(64),
               color: Color(0xFFA5A5A5),
             ),
-            const SizedBox(height: 16),
-            const Text(
+            SizedBox(height: responsive.spacing(16)),
+            Text(
               'No transactions found',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: responsive.fontSize(18),
                 fontWeight: FontWeight.w600,
                 color: Color(0xFFF2F2F2),
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: responsive.spacing(8)),
+            Text(
               'Transactions will appear here when money is collected',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: responsive.fontSize(14),
                 fontWeight: FontWeight.w400,
                 color: Color(0xFFA5A5A5),
               ),
@@ -505,23 +512,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
       },
       color: const Color(0xFF2D7A4F),
       child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        children: _buildTransactionSections(grouped),
+        padding: responsive.paddingSymmetric(horizontal: 20),
+        children: _buildTransactionSections(context, grouped),
       ),
     );
   }
 
-  List<Widget> _buildTransactionSections(Map<String, List<Map<String, dynamic>>> grouped) {
+  List<Widget> _buildTransactionSections(BuildContext context, Map<String, List<Map<String, dynamic>>> grouped) {
+    final responsive = Responsive(context);
     List<Widget> sections = [];
 
     grouped.forEach((date, transactions) {
       sections.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 16, top: 8),
+          padding: EdgeInsets.only(bottom: responsive.spacing(16), top: responsive.spacing(8)),
           child: Text(
             date,
-            style: const TextStyle(
-              fontSize: 16,
+            style: TextStyle(
+              fontSize: responsive.fontSize(16),
               fontWeight: FontWeight.w600,
               color: Color(0xFFA5A5A5),
               fontFamily: 'DM Sans',
@@ -539,6 +547,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
         sections.add(
           _buildTransactionCard(
+            context: context,
             name: memberName,
             group: groupName,
             amount: amount,
@@ -546,7 +555,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             dueAmount: dueAmount,
           ),
         );
-        sections.add(const SizedBox(height: 12));
+        sections.add(SizedBox(height: responsive.spacing(12)));
       }
     });
 
@@ -554,18 +563,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildTransactionCard({
+    required BuildContext context,
     required String name,
     required String group,
     required double amount,
     required String status,
     required double dueAmount,
   }) {
+    final responsive = Responsive(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: responsive.paddingAll(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF232220),
-        borderRadius: BorderRadius.circular(16),
+        color: Color(0xFF232220),
+        borderRadius: BorderRadius.circular(responsive.radius(16)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -576,29 +587,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(18),
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                     fontFamily: 'DM Sans',
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: responsive.spacing(4)),
                 Text(
                   group,
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: responsive.fontSize(14),
                     fontWeight: FontWeight.w400,
                     color: Color(0xFFA5A5A5),
                     fontFamily: 'DM Sans',
                   ),
                 ),
                 if (dueAmount > 0) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: responsive.spacing(4)),
                   Text(
                     'Due: ₹${dueAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(12),
                       fontWeight: FontWeight.w500,
                       color: Color(0xFFEF4444),
                       fontFamily: 'DM Sans',
@@ -613,25 +624,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
             children: [
               Text(
                 '₹${amount.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: responsive.fontSize(18),
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF2D7A4F),
                   fontFamily: 'DM Sans',
                 ),
               ),
               if (status == 'partially_collected') ...[
-                const SizedBox(height: 4),
+                SizedBox(height: responsive.spacing(4)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: responsive.paddingSymmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
+                    color: Color(0xFFEF4444).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(responsive.radius(4)),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Partial',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: responsive.fontSize(10),
                       fontWeight: FontWeight.w600,
                       color: Color(0xFFEF4444),
                       fontFamily: 'DM Sans',
