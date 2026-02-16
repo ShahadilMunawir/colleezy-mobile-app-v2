@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/api_service.dart';
+import '../../utils/currency.dart';
+import '../services/currency_service.dart';
 
 class GroupInfoScreen extends StatefulWidget {
   final int groupId;
@@ -174,6 +176,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     // Format period
     final periodText = collectionPeriod == 'weekly' ? 'Weekly' : 'Monthly';
 
+    final currency = (_groupData!['currency'] as String?) ?? 'INR';
+    CurrencyService.instance.setCurrency(currency);
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(
@@ -183,7 +187,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           // Total Amount - Featured
           _buildFeaturedCard(
             title: 'Total Amount',
-            value: '₹${totalAmount.toStringAsFixed(2)}',
+            value: formatCurrency(totalAmount, currency),
           ),
           const SizedBox(height: 24),
           // Section Title
@@ -202,7 +206,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
           // Details Grid
           _buildDetailItem(
             label: 'Amount Per Period',
-            value: '₹${amountPerPeriod.toStringAsFixed(2)}',
+            value: formatCurrency(amountPerPeriod, currency),
           ),
           if (duration != null)
             _buildDetailItem(
@@ -224,7 +228,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               label: 'Commission',
               value: commissionType == 'percentage'
                   ? '${commissionValue.toStringAsFixed(1)}%'
-                  : '₹${commissionValue.toStringAsFixed(2)}',
+                  : formatCurrency(commissionValue, currency),
               subtitle: commissionType == 'percentage' ? 'Percentage' : 'Fixed Amount',
             ),
           ],
@@ -232,7 +236,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
             const SizedBox(height: 8),
             _buildDetailItem(
               label: 'Final Kuri Amount',
-              value: '₹${finalKuriAmount.toStringAsFixed(2)}',
+              value: formatCurrency(finalKuriAmount, currency),
               subtitle: hasCommission && commissionValue != null
                   ? 'After commission'
                   : null,

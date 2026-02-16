@@ -24,12 +24,177 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   int _calculatedNumberOfPeriods = 0; // Store number of periods for backend
   final _percentageController = TextEditingController();
   final _cashCommissionController = TextEditingController();
+  String _currency = 'INR';
+  final Map<String, String> _currencySymbols = {
+    'INR': '₹',
+    'USD': '\$',
+    'EUR': '€',
+    'GBP': '£',
+  };
   String _contributionFrequency = 'Monthly'; // Selected frequency option
   bool _commissionYes = false;
   String _commissionType = 'percentage'; // 'percentage' or 'cash'
   bool _joinAsMember = true; // Whether creator wants to join as a member
   bool _isLoading = false;
   final ApiService _apiService = ApiService();
+  final TextEditingController _currencySearchController = TextEditingController();
+  // Comprehensive currency list: code -> "Symbol — Name"
+  final Map<String, String> _allCurrencies = {
+    'AED': 'د.إ — UAE Dirham',
+    'AFN': '؋ — Afghani',
+    'ALL': 'L — Lek',
+    'AMD': '֏ — Armenian Dram',
+    'ANG': 'ƒ — Netherlands Antillean Guilder',
+    'AOA': 'Kz — Kwanza',
+    'ARS': '\$ — Argentine Peso',
+    'AUD': '\$ — Australian Dollar',
+    'AWG': 'ƒ — Aruban Florin',
+    'AZN': '₼ — Azerbaijani Manat',
+    'BAM': 'KM — Convertible Mark',
+    'BBD': '\$ — Barbados Dollar',
+    'BDT': '৳ — Taka',
+    'BGN': 'лв — Bulgarian Lev',
+    'BHD': '.د.ب — Bahraini Dinar',
+    'BIF': 'FBu — Burundian Franc',
+    'BMD': '\$ — Bermudian Dollar',
+    'BND': '\$ — Brunei Dollar',
+    'BOB': 'Bs. — Boliviano',
+    'BRL': 'R\$ — Brazilian Real',
+    'BSD': '\$ — Bahamian Dollar',
+    'BTN': 'Nu. — Ngultrum',
+    'BWP': 'P — Pula',
+    'BYN': 'Br — Belarusian Ruble',
+    'BZD': '\$ — Belize Dollar',
+    'CAD': '\$ — Canadian Dollar',
+    'CDF': 'FC — Congolese Franc',
+    'CHF': 'CHF — Swiss Franc',
+    'CLP': '\$ — Chilean Peso',
+    'CNY': '¥ — Chinese Yuan',
+    'COP': '\$ — Colombian Peso',
+    'CRC': '₡ — Costa Rican Colón',
+    'CUP': '\$ — Cuban Peso',
+    'CVE': '\$ — Cape Verdean Escudo',
+    'CZK': 'Kč — Czech Koruna',
+    'DJF': 'Fdj — Djiboutian Franc',
+    'DKK': 'kr — Danish Krone',
+    'DOP': '\$ — Dominican Peso',
+    'DZD': 'د.ج — Algerian Dinar',
+    'EGP': '£ — Egyptian Pound',
+    'ERN': 'Nfk — Nakfa',
+    'ETB': 'Br — Ethiopian Birr',
+    'EUR': '€ — Euro',
+    'FJD': '\$ — Fiji Dollar',
+    'FKP': '£ — Falkland Islands Pound',
+    'GBP': '£ — Pound Sterling',
+    'GEL': '₾ — Lari',
+    'GHS': '₵ — Ghana Cedi',
+    'GIP': '£ — Gibraltar Pound',
+    'GMD': 'D — Dalasi',
+    'GNF': 'FG — Guinean Franc',
+    'GTQ': 'Q — Quetzal',
+    'GYD': '\$ — Guyana Dollar',
+    'HKD': '\$ — Hong Kong Dollar',
+    'HNL': 'L — Lempira',
+    'HRK': 'kn — Kuna',
+    'HTG': 'G — Gourde',
+    'HUF': 'Ft — Forint',
+    'IDR': 'Rp — Rupiah',
+    'ILS': '₪ — Israeli New Shekel',
+    'INR': '₹ — Indian Rupee',
+    'IQD': 'ع.د — Iraqi Dinar',
+    'IRR': '﷼ — Iranian Rial',
+    'ISK': 'kr — Iceland Krona',
+    'JMD': '\$ — Jamaican Dollar',
+    'JOD': 'د.ا — Jordanian Dinar',
+    'JPY': '¥ — Japanese Yen',
+    'KES': 'KSh — Kenyan Shilling',
+    'KGS': 'с — Som',
+    'KHR': '៛ — Riel',
+    'KMF': 'CF — Comorian Franc',
+    'KPW': '₩ — North Korean Won',
+    'KRW': '₩ — South Korean Won',
+    'KWD': 'د.ك — Kuwaiti Dinar',
+    'KYD': '\$ — Cayman Islands Dollar',
+    'KZT': '₸ — Tenge',
+    'LAK': '₭ — Kip',
+    'LBP': 'ل.ل — Lebanese Pound',
+    'LKR': 'රු — Sri Lanka Rupee',
+    'LRD': '\$ — Liberian Dollar',
+    'LSL': 'L — Loti',
+    'LYD': 'د.ل — Libyan Dinar',
+    'MAD': 'د.م. — Moroccan Dirham',
+    'MDL': 'L — Moldovan Leu',
+    'MGA': 'Ar — Malagasy Ariary',
+    'MKD': 'ден — Denar',
+    'MMK': 'Ks — Kyat',
+    'MNT': '₮ — Tugrik',
+    'MOP': 'MOP\$ — Pataca',
+    'MRU': 'UM — Ouguiya',
+    'MUR': '₨ — Mauritian Rupee',
+    'MVR': 'ރ. — Rufiyaa',
+    'MWK': 'MK — Kwacha',
+    'MXN': '\$ — Mexican Peso',
+    'MYR': 'RM — Malaysian Ringgit',
+    'MZN': 'MT — Metical',
+    'NAD': '\$ — Namibia Dollar',
+    'NGN': '₦ — Naira',
+    'NIO': 'C\$ — Cordoba',
+    'NOK': 'kr — Norwegian Krone',
+    'NPR': '₨ — Nepalese Rupee',
+    'NZD': '\$ — New Zealand Dollar',
+    'OMR': '﷼ — Omani Rial',
+    'PAB': 'B/. — Balboa',
+    'PEN': 'S/ — Sol',
+    'PGK': 'K — Kina',
+    'PHP': '₱ — Philippine Peso',
+    'PKR': '₨ — Pakistani Rupee',
+    'PLN': 'zł — Zloty',
+    'PYG': '₲ — Guarani',
+    'QAR': '﷼ — Qatari Rial',
+    'RON': 'lei — Romanian Leu',
+    'RSD': 'дин — Serbian Dinar',
+    'RUB': '₽ — Russian Ruble',
+    'RWF': 'FRw — Rwandan Franc',
+    'SAR': '﷼ — Saudi Riyal',
+    'SBD': '\$ — Solomon Islands Dollar',
+    'SCR': '₨ — Seychelles Rupee',
+    'SDG': 'ج.س — Sudanese Pound',
+    'SEK': 'kr — Swedish Krona',
+    'SGD': '\$ — Singapore Dollar',
+    'SHP': '£ — Saint Helena Pound',
+    'SLL': 'Le — Leone',
+    'SOS': 'S — Somali Shilling',
+    'SRD': '\$ — Surinam Dollar',
+    'SSP': '£ — South Sudanese Pound',
+    'STN': 'Db — Dobra',
+    'SYP': '£S — Syrian Pound',
+    'SZL': 'L — Lilangeni',
+    'THB': '฿ — Baht',
+    'TJS': 'SM — Somoni',
+    'TMT': 'm — Turkmenistan Manat',
+    'TND': 'د.ت — Tunisian Dinar',
+    'TOP': 'T\$ — Paʻanga',
+    'TRY': '₺ — Turkish Lira',
+    'TTD': '\$ — Trinidad and Tobago Dollar',
+    'TWD': 'NT\$ — New Taiwan Dollar',
+    'TZS': 'TSh — Tanzanian Shilling',
+    'UAH': '₴ — Hryvnia',
+    'UGX': 'USh — Ugandan Shilling',
+    'USD': '\$ — US Dollar',
+    'UYU': '\$ — Peso Uruguayo',
+    'UZS': 'лв — Uzbekistani Som',
+    'VES': 'Bs.S — Venezuelan Bolívar Soberano',
+    'VND': '₫ — Dong',
+    'VUV': 'VT — Vatu',
+    'WST': 'T — Tala',
+    'XAF': 'FCFA — Central African CFA Franc',
+    'XCD': '\$ — East Caribbean Dollar',
+    'XOF': 'CFA — West African CFA Franc',
+    'XPF': 'CFP — CFP Franc',
+    'YER': '﷼ — Yemeni Rial',
+    'ZAR': 'R — Rand',
+    'ZMW': 'ZK — Zambian Kwacha',
+  };
 
   @override
   void dispose() {
@@ -73,7 +238,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return 'Amount must be greater than 0';
     }
     if (amount > 1000000) {
-      return 'Amount cannot exceed ₹1,000,000';
+      return 'Amount cannot exceed ${_currencySymbols[_currency]}1,000,000';
     }
     // Recalculate auto-calculated fields
     _calculateAutoFields();
@@ -140,7 +305,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         
         // Calculate Total Chitti Amount = Individual Total Contribution * Number of Members
         final totalChittiAmount = individualTotal * numberOfMembers;
-        _totalChittiAmountController.text = '₹${_formatCurrency(totalChittiAmount)}';
+        _totalChittiAmountController.text = _formatCurrency(totalChittiAmount);
         
         // Calculate Individual Collection Per Period
         // Strategy: Find a reasonable per-period amount that divides evenly
@@ -173,7 +338,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         final durationMonths = actualDays / 30.0;
         
         // Update fields (only show the amount, no frequency text)
-        _individualCollectionPerPeriodController.text = '₹${_formatCurrency(individualCollectionPerPeriod)}';
+        _individualCollectionPerPeriodController.text = _formatCurrency(individualCollectionPerPeriod);
         _chittiDurationController.text = '${durationMonths.toStringAsFixed(1)} Months';
         
       } else {
@@ -205,7 +370,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       formatted = integerPart[i] + formatted;
       count++;
     }
-    return formatted;
+    final symbol = _currencySymbols[_currency] ?? '';
+    return '$symbol$formatted';
   }
 
   String? _validateNumberOfMembers(String? value) {
@@ -242,6 +408,98 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       return 'Percentage cannot exceed 100%';
     }
     return null;
+  }
+
+  void _showCurrencyPicker(BuildContext context) {
+    final responsive = Responsive(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            // initial filtered list
+            final query = _currencySearchController.text.trim().toLowerCase();
+            final filtered = _allCurrencies.entries.where((e) {
+              final code = e.key.toLowerCase();
+              final label = e.value.toLowerCase();
+              return code.contains(query) || label.contains(query);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: BoxDecoration(
+                color: Color(0xFF2A2A2A),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(responsive.radius(20)),
+                  topRight: Radius.circular(responsive.radius(20)),
+                ),
+              ),
+              padding: responsive.paddingSymmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  Container(
+                    width: responsive.width(40),
+                    height: responsive.height(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.textTertiary.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(responsive.radius(2)),
+                    ),
+                  ),
+                  SizedBox(height: responsive.spacing(12)),
+                  TextFormField(
+                    controller: _currencySearchController,
+                    style: TextStyle(color: Color(0xFFE0DED9)),
+                    decoration: InputDecoration(
+                      hintText: 'Search currency (code or name)',
+                      hintStyle: TextStyle(color: AppColors.textTertiary),
+                      prefixIcon: Icon(Icons.search, color: AppColors.textTertiary),
+                      filled: true,
+                      fillColor: Color(0xFF141414),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(responsive.radius(12)),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (_) {
+                      setStateSheet(() {});
+                    },
+                  ),
+                  SizedBox(height: responsive.spacing(12)),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final code = filtered[index].key;
+                        final label = filtered[index].value;
+                        return ListTile(
+                          title: Text(
+                            '$code',
+                            style: TextStyle(color: Color(0xFFE0DED9)),
+                          ),
+                          subtitle: Text(
+                            label,
+                            style: TextStyle(color: AppColors.textTertiary),
+                          ),
+                          onTap: () {
+                            setState(() {
+                              _currency = code;
+                            });
+                            _currencySearchController.clear();
+                            Navigator.of(context).pop();
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   String? _validateCashCommission(String? value) {
@@ -365,10 +623,57 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   context: context,
                   controller: _individualTotalContributionController,
-                  placeholder: '₹20,000',
+                  placeholder: '${_currencySymbols[_currency]}20,000',
                   keyboardType: TextInputType.number,
                   validator: _validateIndividualTotalContribution,
                   onChanged: (_) => _calculateAutoFields(),
+                ),
+                SizedBox(height: responsive.spacing(24)),
+                // Currency picker (opens searchable list)
+                _buildLabel(context, 'Currency'),
+                SizedBox(height: responsive.spacing(8)),
+                GestureDetector(
+                  onTap: () => _showCurrencyPicker(context),
+                  child: Container(
+                    padding: responsive.paddingSymmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF141414),
+                      borderRadius: BorderRadius.circular(responsive.radius(12)),
+                      border: Border.all(color: Color(0xFF3A3A3A)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              _currencySymbols[_currency] ?? '',
+                              style: TextStyle(
+                                fontSize: responsive.fontSize(15),
+                                color: Color(0xFFE0DED9),
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                            SizedBox(width: responsive.spacing(8)),
+                            Text(
+                              _currency,
+                              style: TextStyle(
+                                fontSize: responsive.fontSize(15),
+                                color: Color(0xFFE0DED9),
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'DM Sans',
+                              ),
+                            ),
+                          ],
+                        ),
+                        Icon(
+                          Icons.keyboard_arrow_down,
+                          color: AppColors.textTertiary,
+                          size: responsive.width(24),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 SizedBox(height: responsive.spacing(24)),
                 // Contribution Frequency
@@ -392,7 +697,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   context: context,
                   controller: _individualCollectionPerPeriodController,
-                  placeholder: '₹1,000',
+                  placeholder: '${_currencySymbols[_currency]}1,000',
                   readOnly: true,
                 ),
                 SizedBox(height: responsive.spacing(24)),
@@ -402,7 +707,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                 _buildTextField(
                   context: context,
                   controller: _totalChittiAmountController,
-                  placeholder: '₹2,00,000',
+                  placeholder: '${_currencySymbols[_currency]}2,00,000',
                   readOnly: true,
                 ),
                 SizedBox(height: responsive.spacing(24)),
@@ -936,7 +1241,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
               prefixIcon: Padding(
                 padding: EdgeInsets.only(left: responsive.spacing(16), right: responsive.spacing(8)),
                 child: Text(
-                  '₹',
+                  _currencySymbols[_currency] ?? '',
                   style: TextStyle(
                     fontSize: responsive.fontSize(15),
                     fontWeight: FontWeight.w400,
@@ -1187,6 +1492,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
         commissionType: commissionType,
         commissionValue: commissionValue,
         joinAsMember: _joinAsMember,
+        currency: _currency,
       );
 
       if (result != null && mounted) {

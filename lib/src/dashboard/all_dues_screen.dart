@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../groups/group_details.dart';
 import '../groups/member_details.dart';
+import '../../utils/currency.dart';
 
 class AllDuesScreen extends StatefulWidget {
   const AllDuesScreen({super.key});
@@ -221,7 +222,8 @@ class _AllDuesScreenState extends State<AllDuesScreen> {
       final dueAmount = (due['due_amount'] as num?)?.toDouble() ?? 0.0;
       totalDue += dueAmount;
     }
-
+    final currency = (dues.isNotEmpty ? (dues.first['currency'] as String?) : null) ?? 'INR';
+    
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF232220),
@@ -305,7 +307,7 @@ class _AllDuesScreenState extends State<AllDuesScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '₹${totalDue.toStringAsFixed(2)}',
+                        formatCurrency(totalDue, currency),
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,

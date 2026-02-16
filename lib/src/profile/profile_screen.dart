@@ -490,12 +490,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final phoneNumber = _phoneController.text.trim().replaceAll(RegExp(r'\D'), '');
         final phone = phoneNumber.isNotEmpty ? '${_selectedCountry.dialCode}$phoneNumber' : '';
         if (phone.isNotEmpty) {
-          // Profile is complete, check if we should navigate to home
-          // Only navigate if we came from login (not from home screen)
-          final canPop = Navigator.canPop(context);
-          if (!canPop) {
-            // We came from login, navigate to home
-            Navigator.pushReplacementNamed(context, '/home');
+          // Profile is complete. If this screen was opened as part of the
+          // initial signup/login flow (no explicit back button), navigate to home.
+          // If it's opened from the app (showBackButton == true) just stay here.
+          if (!widget.showBackButton) {
+            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+          } else {
+            // Preserve previous behavior for screens opened from within the app:
+            final canPop = Navigator.canPop(context);
+            if (!canPop) {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
           }
         }
       } else {

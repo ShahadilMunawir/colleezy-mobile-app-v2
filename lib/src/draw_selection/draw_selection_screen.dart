@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'package:auto_size_text/auto_size_text.dart';
 import '../spin_wheel/spin_wheel.dart';
 import '../lottery/lottery_screen.dart';
 import '../../utils/responsive.dart';
@@ -12,93 +14,104 @@ class DrawSelectionScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF141414),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: Color(0xFF141414),
-              ),
-              child: Padding(
-                padding: responsive.paddingFromLTRB(20, 16, 20, 20),
-                child: Text(
-                  'Draw Selection',
-                  style: TextStyle(
-                    fontSize: responsive.fontSize(24),
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFEFEEEC),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          final maxH = constraints.maxHeight;
+          final headerH = (maxH * 0.10).clamp(56.0, 100.0);
+          final canvasH = (maxH * 0.50).clamp(180.0, maxH * 0.65);
+          final buttonAreaH = (maxH * 0.25).clamp(120.0, maxH * 0.35);
+          final horizontalPad = math.max(16.0, maxW * 0.05);
+          final bottomNavReserve = MediaQuery.of(context).padding.bottom + responsive.height(16);
+
+          return Column(
+            children: [
+              // Header
+              SizedBox(
+                height: headerH,
+                width: double.infinity,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(horizontalPad, headerH * 0.12, horizontalPad, headerH * 0.12),
+                  child: AutoSizeText(
+                    'Draw Selection',
+                    maxLines: 1,
+                    minFontSize: 18,
+                    style: TextStyle(
+                      fontSize: responsive.fontSize(24),
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFEFEEEC),
+                    ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              flex: 2,
-              child: SizedBox(
+
+              // Illustration / Canvas
+              SizedBox(
+                height: canvasH,
                 width: double.infinity,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    _buildStopwatchIllustration(),
-                  ],
+                child: Center(
+                  child: _buildStopwatchIllustration(canvasH),
                 ),
               ),
-            ),
-            // Middle Section with Buttons
-            Expanded(
-              flex: 1,
-              child: Padding(
-                padding: responsive.paddingSymmetric(horizontal: 24, vertical: 20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildActionButton(
-                      context: context,
-                      label: 'Manual Draw',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const LotteryScreen(),
-                          ),  
-                        );
-                      },
-                    ),
-                    SizedBox(height: responsive.spacing(16)),
-                    _buildActionButton(
-                      context: context,
-                      label: 'Spin the Wheel',
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const SpinWheelScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+
+              // Middle Section with Buttons
+              SizedBox(
+                height: buttonAreaH,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: buttonAreaH * 0.12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildActionButton(
+                        context: context,
+                        label: 'Manual Draw',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const LotteryScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      SizedBox(height: responsive.spacing(12)),
+                      _buildActionButton(
+                        context: context,
+                        label: 'Spin the Wheel',
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const SpinWheelScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Bottom spacing for navigation bar
-            SizedBox(height: responsive.spacing(100)),
-          ],
-        ),
+
+              // Reserve space for bottom nav so content isn't blocked
+              SizedBox(height: bottomNavReserve),
+            ],
+          );
+        }),
       ),
     );
   }
 
-  Widget _buildStopwatchIllustration() {
+  Widget _buildStopwatchIllustration(double height) {
     return Stack(
       children: [
-        Image.asset(
-          'assets/png/draw.png',
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.contain,
+        Center(
+          child: Image.asset(
+            'assets/png/draw.png',
+            width: double.infinity,
+            height: height,
+            fit: BoxFit.contain,
+          ),
         ),
         Container(
           width: double.infinity,
-          height: double.infinity,
+          height: height,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
@@ -127,7 +140,7 @@ class DrawSelectionScreen extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: responsive.paddingSymmetric(horizontal: 24, vertical: 18),
+        padding: responsive.paddingSymmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF2D7A4F),
           borderRadius: BorderRadius.circular(responsive.radius(16)),

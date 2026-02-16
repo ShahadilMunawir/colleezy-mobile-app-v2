@@ -1379,21 +1379,21 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                               showErrorToast('Please enter the member\'s name');
                               return;
                             }
-                            
+
                             if (phone.isEmpty) {
                               showErrorToast('Please enter the member\'s phone number');
                               return;
                             }
-                            
-                            // Validate phone number format (should have at least 7 digits)
+
+                            // Validate phone number format based on selected country length
                             final cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
-                            if (cleanPhone.length < 7) {
-                              showErrorToast('Please enter a valid phone number (at least 7 digits)');
+                            if (cleanPhone.isEmpty) {
+                              showErrorToast('Please enter a valid phone number');
                               return;
                             }
-                            
-                            if (cleanPhone.length > 15) {
-                              showErrorToast('Phone number is too long (maximum 15 digits)');
+
+                            if (cleanPhone.length != selectedCountry.phoneLength) {
+                              showErrorToast('Phone number must be exactly ${selectedCountry.phoneLength} digits for ${selectedCountry.name}');
                               return;
                             }
                           }
@@ -1547,14 +1547,18 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       _loadContacts();
     }
     
-    void showErrorToast(String message) {
+    void showErrorToast(BuildContext modalContext, String message) {
       if (mounted) {
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(message),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.all(16),
+            margin: EdgeInsets.only(
+              bottom: MediaQuery.of(modalContext).size.height * 0.88,
+              left: 16,
+              right: 16,
+            ),
           ),
         );
       }
@@ -1962,34 +1966,33 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             .toList();
                         
                         // Validate inputs
-                        if (nameController.text.trim().isEmpty && phoneController.text.trim().isEmpty && selectedContactsList.isEmpty) {
-                          showErrorToast('Please enter a name and phone number, or select a contact');
+                        final String name = nameController.text.trim();
+                        final String phone = phoneController.text.trim();
+                        if (name.isEmpty && phone.isEmpty && selectedContactsList.isEmpty) {
+                          showErrorToast(modalContext, 'Please enter a name and phone number, or select a contact');
                           return;
                         }
-                        
-                        if (nameController.text.trim().isEmpty && phoneController.text.trim().isNotEmpty) {
-                          showErrorToast('Name is required when adding by phone');
-                          return;
-                        }
-                        
-                        // Validate manual entry if provided
-                        String phone = phoneController.text.trim();
-                        if (phone.isNotEmpty) {
-                          // Remove all non-digit characters except +
-                          String cleanPhone = phone.replaceAll(RegExp(r'[\D]+'), '');
-                          
+
+                        // If manual entry is being used (either name or phone provided), require both fields
+                        final bool isManualEntry = name.isNotEmpty || phone.isNotEmpty;
+                        if (isManualEntry) {
+                          if (name.isEmpty) {
+                            showErrorToast(modalContext, 'Name is required when adding by phone');
+                            return;
+                          }
+                          if (phone.isEmpty) {
+                            showErrorToast(modalContext, 'Phone number is required when adding by name');
+                            return;
+                          }
+
+                          // Normalize phone to digits for length validation based on selected country
+                          String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
                           if (cleanPhone.isEmpty) {
-                            showErrorToast('Please enter a valid phone number');
+                            showErrorToast(modalContext, 'Please enter a valid phone number');
                             return;
                           }
-                          
-                          if (cleanPhone.length < 7) {
-                            showErrorToast('Please enter a valid phone number (at least 7 digits)');
-                            return;
-                          }
-                          
-                          if (cleanPhone.length > 15) {
-                            showErrorToast('Phone number is too long (maximum 15 digits)');
+                          if (cleanPhone.length != selectedCountry.phoneLength) {
+                            showErrorToast(modalContext, 'Phone number must be exactly ${selectedCountry.phoneLength} digits for ${selectedCountry.name}');
                             return;
                           }
                         }
@@ -2105,8 +2108,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                             // Refresh members list
                             _loadMembers();
                           } else {
-                            if (mounted) {
-                              showErrorToast('Failed to add agent(s). Please try again.');
+                          if (mounted) {
+                              showErrorToast(modalContext, 'Failed to add agent(s). Please try again.');
                             }
                           }
                         } catch (e) {
@@ -2114,7 +2117,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                           if (mounted) Navigator.pop(modalContext);
                           
                           if (mounted) {
-                            showErrorToast('Error: ${e.toString()}');
+                            showErrorToast(modalContext, 'Error: ${e.toString()}');
                           }
                         }
                       },

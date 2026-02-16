@@ -34,6 +34,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _isLoading = false;
         });
       }
+      // Auto-mark all notifications as read when the page opens
+      if (mounted && _notifications.any((n) => n['is_read'] == false)) {
+        await _markAllAsRead();
+      }
     } catch (e) {
       print('Error loading notifications: $e');
       if (mounted) {
@@ -77,8 +81,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _formatDateTime(String dateTimeStr) {
     try {
-      final dateTime = DateTime.parse(dateTimeStr).toLocal();
-      final now = DateTime.now();
+      // parse backend timestamp as UTC and compare against current UTC time
+      final dateTime = DateTime.parse(dateTimeStr).toUtc();
+      final now = DateTime.now().toUtc();
       final difference = now.difference(dateTime);
 
       if (difference.inMinutes < 60) {
@@ -86,7 +91,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       } else if (difference.inHours < 24) {
         return '${difference.inHours}h ago';
       } else {
-        return DateFormat('MMM d, h:mm a').format(dateTime);
+        // show formatted time in local timezone for readability
+        return DateFormat('MMM d, h:mm a').format(dateTime.toLocal());
       }
     } catch (e) {
       return dateTimeStr;

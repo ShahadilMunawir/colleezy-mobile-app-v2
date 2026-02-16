@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../../utils/currency.dart';
+import '../services/currency_service.dart';
 
 class MemberDetailsScreen extends StatefulWidget {
   final int groupId;
@@ -40,6 +42,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   double? _amountPerPeriod; // Store the group's amount_per_period
+  String _currencyCode = 'INR';
   DateTime? _groupStartingDate; // Store the group's starting_date
   DateTime? _selectedTransactionDate; // Will be set based on current month payment status
   Set<String> _fullyCollectedMonths = {}; // Set of "YYYY-MM" strings for months fully collected
@@ -80,10 +83,14 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
             print('Error parsing starting_date: $e');
           }
         }
+        final currencyCode = (group['currency'] as String?) ?? 'INR';
         setState(() {
           _amountPerPeriod = amountPerPeriod;
           _groupStartingDate = startingDate;
+          _currencyCode = currencyCode;
         });
+        // Update global fallback currency
+        CurrencyService.instance.setCurrency(currencyCode);
         // Auto-fill amount if "Collected" is selected
         if (_selectedStatus == 'collected' && amountPerPeriod != null) {
           _amountController.text = amountPerPeriod.toStringAsFixed(2);
@@ -93,6 +100,8 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       print('Error loading group details: $e');
     }
   }
+
+  
 
   @override
   void dispose() {
@@ -523,7 +532,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
           }
           
           // Format amount
-          final formattedAmount = '₹${amount.toStringAsFixed(2)}';
+          final formattedAmount = formatCurrency(amount, _currencyCode);
           
           // Determine if completed
           final isCompleted = status == 'collected' && dueAmount == 0;
@@ -590,7 +599,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                 if (dueAmount > 0) ...[
                   const SizedBox(height: 2),
                   Text(
-                    'Due: ₹${dueAmount.toStringAsFixed(2)}',
+                    'Due: ${formatCurrency(dueAmount, _currencyCode)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -727,7 +736,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                         children: [
                           Text(
                             _selectedStatus == 'collected' && _amountPerPeriod != null && _amountController.text.isEmpty
-                                ? 'Collected (₹${_amountPerPeriod!.toStringAsFixed(2)})'
+                                ? 'Collected (${formatCurrency(_amountPerPeriod!, _currencyCode)})'
                                 : _selectedStatus.replaceAll('_', ' ').split(' ').map((word) => 
                                     word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1)
                                   ).join(' '),

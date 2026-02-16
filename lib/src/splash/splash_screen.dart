@@ -127,21 +127,46 @@ class _SplashScreenState extends State<SplashScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo with animations
-            AnimatedBuilder(
-              animation: _logoController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _logoFadeAnimation,
-                  child: SizedBox(
-                    width: responsive.width(140),
-                    height: responsive.height(140),
-                    child: SvgPicture.asset(
-                      'assets/svg/logo.svg',                    
+            // Logo with text closely positioned underneath
+            SizedBox(
+              height: responsive.height(140) + responsive.spacing(6),
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedBuilder(
+                    animation: _logoController,
+                    builder: (context, child) {
+                      return FadeTransition(
+                        opacity: _logoFadeAnimation,
+                        child: SizedBox(
+                          width: responsive.width(140),
+                          height: responsive.height(140),
+                          child: SvgPicture.asset(
+                            'assets/svg/logo.svg',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  Positioned(
+                    bottom: -responsive.spacing(0.1),
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        'Collect It Easy',
+                        style: TextStyle(
+                          fontSize: responsive.fontSize(18),
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'DM Sans',
+                        ),
+                      ),
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ],
         ),

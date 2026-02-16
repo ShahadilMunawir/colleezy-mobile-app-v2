@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../utils/responsive.dart';
+import '../services/currency_service.dart';
+import '../../utils/currency.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int selectedIndex;
@@ -114,13 +116,19 @@ class CustomBottomNavBar extends StatelessWidget {
             ),
             Positioned(
               bottom: responsive.spacing(2),
-              child: Text(
-                '₹',
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
-                  fontSize: responsive.fontSize(12),
-                  fontWeight: FontWeight.bold,
-                ),
+              child: ValueListenableBuilder<String>(
+                valueListenable: CurrencyService.instance.currentCurrency,
+                builder: (context, cur, _) {
+                  final symbol = currencySymbols[cur] ?? cur;
+                  return Text(
+                    symbol,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : const Color(0xFF9E9E9E),
+                      fontSize: responsive.fontSize(12),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
               ),
             ),
           ],

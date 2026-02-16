@@ -572,9 +572,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 SliverToBoxAdapter(child: SizedBox(height: responsive.spacing(24))),
-                // Wrapped section with top border radius
-                SliverFillRemaining(
-                  hasScrollBody: false,
+                // Wrapped section with top border radius (now scrollable)
+                SliverToBoxAdapter(
                   child: Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -585,7 +584,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.max,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Action buttons
                         Padding(
@@ -595,7 +594,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               vertical: 20,
                               horizontal: 16,
                             ),
-
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
@@ -658,70 +656,62 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         SizedBox(height: responsive.spacing(10)),
-                        // Quote card
-                        Container(
-                          padding: responsive.paddingSymmetric(
-                            vertical: 20,
-                            horizontal: 40,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Color(0xFFE8E8E8),
-                            borderRadius: BorderRadius.circular(responsive.radius(20)),
-                          ),
-                          child: Column(
-                            children: [
-                              Text(
-                                'Dream Bid . Start small. Act now.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: responsive.fontSize(16),
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2A2A2A),
-                                  height: 1.4,
-                                ),
-                              ),
-                              SizedBox(height: responsive.spacing(8)),
-                              Text(
-                                '-Robin Sharma',
-                                style: TextStyle(
-                                  fontSize: responsive.fontSize(13),
-                                  fontWeight: FontWeight.w400,
-                                  color: Color(0xFF2D7A4F),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // const SizedBox(height: 24),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: responsive.paddingFromLTRB(24, 24, 24, 16),
-                                child: Text(
-                                  'Next Payment',
+                        // Quote card (centered)
+                        Center(
+                          child: Container(
+                            width: MediaQuery.of(context).size.width - responsive.width(48),
+                            padding: responsive.paddingSymmetric(
+                              vertical: 20,
+                              horizontal: 40,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8E8E8),
+                              borderRadius: BorderRadius.circular(responsive.radius(20)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Dream Big . Start small. Act now.',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontSize: responsive.fontSize(18),
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFFD2D2D2),
+                                    fontSize: responsive.fontSize(16),
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF2A2A2A),
+                                    height: 1.4,
                                   ),
                                 ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: responsive.paddingFromLTRB(
-                                    24,
-                                    0,
-                                    24,
-                                    0,
+                                SizedBox(height: responsive.spacing(8)),
+                                Text(
+                                  '-Robin Sharma',
+                                  style: TextStyle(
+                                    fontSize: responsive.fontSize(13),
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF2D7A4F),
                                   ),
-                                  child: _buildNextPaymentsList(context),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
+                        // Next Payments header
+                        Padding(
+                          padding: responsive.paddingFromLTRB(24, 24, 24, 16),
+                          child: Text(
+                            'Next Payment',
+                            style: TextStyle(
+                              fontSize: responsive.fontSize(18),
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFD2D2D2),
+                            ),
+                          ),
+                        ),
+                        // Payments list
+                        Padding(
+                          padding: responsive.paddingFromLTRB(24, 0, 24, 0),
+                          child: _buildNextPaymentsList(context),
+                        ),
+                        // Extra bottom spacing so bottom nav doesn't overlap content
+                        SizedBox(height: responsive.height(96)),
                       ],
                     ),
                   ),

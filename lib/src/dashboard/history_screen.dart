@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import 'all_dues_screen.dart';
 import '../../utils/responsive.dart';
+import '../../utils/currency.dart';
 
 class HistoryScreen extends StatefulWidget {
   final Function(VoidCallback)? onVisible;
@@ -96,6 +97,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
         startDate: startDate,
         endDate: endDate,
       );
+
+      // Ensure every transaction has a currency field. Prefer server-provided currency,
+      // otherwise try to find it from loaded groups, or fetch group detail as fallback.
+      for (var t in transactions) {
+        if (t['currency'] == null) {
+          try {
+            final gid = t['kuri_group_id'] as int?;
+            String? code;
+            if (gid != null) {
+              // Try local groups cache first
+              final found = _groups.firstWhere(
+                (g) => g['id'] == gid,
+                orElse: () => {},
+              );
+              if (found.isNotEmpty) {
+                code = found['currency'] as String?;
+              } else {
+                // Fetch group from API
+                final groupDetail = await _apiService.getGroup(gid);
+                if (groupDetail != null) {
+                  code = groupDetail['currency'] as String?;
+                }
+              }
+            }
+            t['currency'] = (code != null && code.toString().isNotEmpty) ? code : 'INR';
+          } catch (e) {
+            t['currency'] = 'INR';
+          }
+        }
+      }
 
       if (mounted) {
         // Extract unique dates and sort them (using transaction_date)
@@ -553,6 +584,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             amount: amount,
             status: status,
             dueAmount: dueAmount,
+            currency: transaction['currency'] as String? ?? 'INR',
           ),
         );
         sections.add(SizedBox(height: responsive.spacing(12)));
@@ -569,6 +601,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     required double amount,
     required String status,
     required double dueAmount,
+    required String currency,
   }) {
     final responsive = Responsive(context);
     return Container(
@@ -606,8 +639,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 if (dueAmount > 0) ...[
                   SizedBox(height: responsive.spacing(4)),
-                  Text(
-                    'Due: ₹${dueAmount.toStringAsFixed(2)}',
+                Text(
+                  'Due: ${formatCurrency(dueAmount, currency)}',
                     style: TextStyle(
                       fontSize: responsive.fontSize(12),
                       fontWeight: FontWeight.w500,
@@ -623,7 +656,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₹${amount.toStringAsFixed(2)}',
+                formatCurrency(amount, currency),
                 style: TextStyle(
                   fontSize: responsive.fontSize(18),
                   fontWeight: FontWeight.w600,

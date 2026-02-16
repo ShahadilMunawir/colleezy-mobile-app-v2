@@ -169,6 +169,12 @@ class ApiService {
       if (phone != null && phone.isNotEmpty) {
         body['phone'] = phone;
       }
+
+      // Include display name if available from Firebase (helps profile completion)
+      final displayName = firebaseUser.displayName;
+      if (displayName != null && displayName.isNotEmpty) {
+        body['name'] = displayName;
+      }
       
       final response = await http.post(
         url,
@@ -245,7 +251,11 @@ class ApiService {
       if (user == null) return false;
       
       final phone = user['phone'] as String?;
-      return phone != null && phone.trim().isNotEmpty;
+      final name = user['name'] as String?;
+      // Consider profile complete if both name and phone are present (non-empty)
+      final hasPhone = phone != null && phone.trim().isNotEmpty;
+      final hasName = name != null && name.trim().isNotEmpty;
+      return hasPhone && hasName;
     } catch (e) {
       print('Error checking profile completion: $e');
       return false;
@@ -390,6 +400,7 @@ class ApiService {
     bool joinAsMember = true,
     bool autoDraw = false,
     String? autoDrawTime,
+    String? currency,
   }) async {
     try {
       final url = Uri.parse('$baseUrl/kuri-groups');
@@ -405,6 +416,7 @@ class ApiService {
         'number_of_members': numberOfMembers,
         'amount_per_period': amountPerPeriod,
         'collection_period': collectionPeriod.toLowerCase(),
+        'currency': currency ?? 'INR',
         'join_as_member': joinAsMember,
         'auto_draw': autoDraw,
       };

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:math' as math;
+import 'package:auto_size_text/auto_size_text.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../profile/profile_screen.dart';
@@ -245,309 +247,324 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final responsive = Responsive(context);
-    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    
+    // not using keyboard-based scrolling; layout will compress for keyboard
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              physics: isKeyboardVisible 
-                  ? const AlwaysScrollableScrollPhysics() 
-                  : const NeverScrollableScrollPhysics(),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: IntrinsicHeight(
-                  child: Column(
+            final maxW = constraints.maxWidth;
+            final maxH = constraints.maxHeight;
+            final topGraphicH = math.min(maxH * 0.22, 260.0);
+            final logoW = math.min(maxW * 0.45, 160.0);
+            final verticalGap = math.max(12.0, maxH * 0.02);
+            final buttonH = math.max(44.0, maxH * 0.06);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Top graphic area
+                SizedBox(
+                  height: topGraphicH,
+                  child: Stack(
+                    alignment: Alignment.center,
                     children: [
-                      SizedBox(
-                        height: responsive.height(250),
-                        child: Stack(
-                          alignment: Alignment.center,
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        child: SvgPicture.asset(
+                          'assets/svg/card.svg',
+                          width: math.min(maxW * 0.55, 220.0),
+                          height: topGraphicH,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Logo
+                SizedBox(
+                  width: logoW,
+                  child: SvgPicture.asset('assets/svg/logo.svg', width: logoW),
+                ),
+
+                SizedBox(height: verticalGap),
+
+                // Form area (fills remaining space)
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A2A2A),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(responsive.radius(30)),
+                        topRight: Radius.circular(responsive.radius(30)),
+                      ),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: math.max(16.0, maxW * 0.05)),
+                    child: Column(
+                      children: [
+                        SizedBox(height: math.max(18.0, maxH * 0.02)),
+                        // Title
+                        AutoSizeText.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Welcome To \n',
+                                style: TextStyle(
+                                  fontSize: responsive.fontSize(32),
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'DM Sans',
+                                  color: const Color(0XFFEFEEEC),
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                              TextSpan(
+                                text: 'Colleezy',
+                                style: TextStyle(
+                                  fontSize: responsive.fontSize(32),
+                                  fontWeight: FontWeight.w800,
+                                  fontFamily: 'DM Sans',
+                                  color: const Color(0xFF2D7A4F),
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          minFontSize: 18,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: math.max(8.0, maxH * 0.01)),
+                        AutoSizeText(
+                          'Sign in with your Colleezy account to Manage money',
+                          maxLines: 2,
+                          minFontSize: 11,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: responsive.fontSize(12),
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFFD0CDC6),
+                            height: 1.4,
+                          ),
+                        ),
+                        SizedBox(height: math.max(12.0, maxH * 0.015)),
+
+                        // Phone input container
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141414),
+                            borderRadius: BorderRadius.circular(responsive.radius(12)),
+                          ),
+                          child: Row(
+                            children: [
+                              // Country Code Picker
+                              GestureDetector(
+                                onTap: _showCountryPicker,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      right: BorderSide(
+                                        color: Color(0xFF2A2A2A),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _selectedCountry.flag,
+                                        style: TextStyle(fontSize: math.max(14.0, maxW * 0.04)),
+                                      ),
+                                      SizedBox(width: math.max(6.0, maxW * 0.02)),
+                                      Text(
+                                        _selectedCountry.dialCode,
+                                        style: TextStyle(
+                                          color: const Color(0xFFEFEEEC),
+                                          fontSize: math.max(12.0, maxW * 0.036),
+                                          fontWeight: FontWeight.w500,
+                                          fontFamily: 'DM Sans',
+                                        ),
+                                      ),
+                                      SizedBox(width: math.max(6.0, maxW * 0.02)),
+                                      Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: const Color(0xFF6B7280),
+                                        size: math.max(16.0, maxW * 0.04),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Phone Number Input
+                              Expanded(
+                                child: TextField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: _selectedCountry.phoneLength,
+                                  style: TextStyle(
+                                    color: const Color(0xFFEFEEEC),
+                                    fontSize: math.max(13.0, maxW * 0.038),
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'DM Sans',
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Phone Number (${_selectedCountry.phoneLength} digits)',
+                                    hintStyle: TextStyle(
+                                      color: const Color(0xFFD0CDC6),
+                                      fontSize: math.max(13.0, maxW * 0.036),
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    counterText: '', // Hide the character counter
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(responsive.radius(12)),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.transparent,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: math.max(12.0, maxH * 0.015)),
+
+                        // Sign in button
+                        SizedBox(
+                          width: double.infinity,
+                          height: buttonH,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _handlePhoneSignIn,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2D7A4F),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(responsive.radius(12)),
+                              ),
+                              disabledBackgroundColor: const Color(0xFF9CA3AF),
+                            ),
+                            child: _isLoading
+                                ? SizedBox(
+                                    width: math.max(20.0, maxW * 0.06),
+                                    height: math.max(20.0, maxW * 0.06),
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : Text(
+                                    'Sign In with Phone',
+                                    style: TextStyle(
+                                      fontSize: math.max(14.0, maxW * 0.04),
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                          ),
+                        ),
+
+                        SizedBox(height: math.max(12.0, maxH * 0.02)),
+
+                        // Divider + "Or Continue With"
+                        Row(
                           children: [
-                            Positioned(
-                              left: 0,
-                              top: 0,
-                              child: SvgPicture.asset(
-                                'assets/svg/card.svg',
-                                width: responsive.width(200),
-                                height: responsive.height(200),
+                            Expanded(
+                              child: Container(
+                                height: 1,
+                                color: const Color(0xFFE5E7EB),
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: math.max(8.0, maxW * 0.04)),
+                              child: Text(
+                                'Or Continue With',
+                                style: TextStyle(
+                                  fontSize: math.max(11.0, maxW * 0.034),
+                                  color: const Color(0xFFD0CDC6),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Container(
+                                height: 1,
+                                color: const Color(0xFFE5E7EB),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      SvgPicture.asset('assets/svg/logo.svg'),
-                      SizedBox(height: responsive.spacing(50)),
-                      Flexible(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight - responsive.height(250) - responsive.height(100) - responsive.spacing(50),
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Color(0xFF2A2A2A),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(responsive.radius(30)),
-                                topRight: Radius.circular(responsive.radius(30)),
-                              ),
-                            ),
-                            padding: responsive.paddingSymmetric(horizontal: 20),
-                            child: Column(
-                  children: [
-                    SizedBox(height: responsive.spacing(40)),
-                    RichText(
-                      textAlign: TextAlign.center,
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Welcome To\n',
-                            style: TextStyle(
-                              fontSize: responsive.fontSize(32),
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'DM Sans',
-                              color: Color(0XFFEFEEEC),
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'Colleezy',
-                            style: TextStyle(
-                              fontSize: responsive.fontSize(32),
-                              fontWeight: FontWeight.w800,
-                              fontFamily: 'DM Sans',
-                              color: Color(0xFF2D7A4F),
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: responsive.spacing(12)),
-                    Text(
-                      'Sign in with your Colleezy account to Manage money',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: responsive.fontSize(12),
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFFD0CDC6),
-                        height: 1.5,
-                      ),
-                    ),
-                    SizedBox(height: responsive.spacing(20)),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141414),
-                        borderRadius: BorderRadius.circular(responsive.radius(12)),
-                      ),
-                      child: Row(
-                        children: [
-                          // Country Code Picker
-                          GestureDetector(
-                            onTap: _showCountryPicker,
-                            child: Container(
-                              padding: responsive.paddingSymmetric(horizontal: 10, vertical: 16),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  right: BorderSide(
-                                    color: Color(0xFF2A2A2A),
-                                    width: 1,
-                                  ),
+
+                        SizedBox(height: math.max(12.0, maxH * 0.02)),
+
+                        // Social buttons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: _isLoading ? null : _handleGoogleSignIn,
+                              child: Container(
+                                padding: EdgeInsets.all(math.max(10.0, maxW * 0.03)),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(responsive.radius(12)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.04),
+                                      blurRadius: math.max(6.0, maxW * 0.02),
+                                      offset: Offset(0, math.max(2.0, maxW * 0.01)),
+                                    ),
+                                  ],
+                                ),
+                                width: math.max(56.0, maxW * 0.14),
+                                child: SvgPicture.asset(
+                                  'assets/svg/google.svg',
+                                  width: math.max(18.0, maxW * 0.06),
+                                  height: math.max(18.0, maxW * 0.06),
+                                  fit: BoxFit.contain,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _selectedCountry.flag,
-                                    style: TextStyle(fontSize: responsive.fontSize(18)),
-                                  ),
-                                  SizedBox(width: responsive.spacing(4)),
-                                  Text(
-                                    _selectedCountry.dialCode,
-                                    style: TextStyle(
-                                      color: Color(0xFFEFEEEC),
-                                      fontSize: responsive.fontSize(14),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'DM Sans',
-                                    ),
-                                  ),
-                                  SizedBox(width: responsive.spacing(2)),
-                                  Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: Color(0xFF6B7280),
-                                    size: responsive.width(18),
+                            ),
+                            SizedBox(width: math.max(10.0, maxW * 0.03)),
+                            Container(
+                              padding: EdgeInsets.all(math.max(10.0, maxW * 0.03)),
+                              width: math.max(56.0, maxW * 0.14),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(responsive.radius(12)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: math.max(6.0, maxW * 0.02),
+                                    offset: Offset(0, math.max(2.0, maxW * 0.01)),
                                   ),
                                 ],
                               ),
-                            ),
-                          ),
-                          // Phone Number Input
-                          Expanded(
-                            child: TextField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              maxLength: _selectedCountry.phoneLength,
-                              style: TextStyle(
-                                color: Color(0xFFEFEEEC),
-                                fontSize: responsive.fontSize(15),
-                                fontWeight: FontWeight.w400,
-                                fontFamily: 'DM Sans',
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Phone Number (${_selectedCountry.phoneLength} digits)',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFFD0CDC6),
-                                  fontSize: responsive.fontSize(15),
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                counterText: '', // Hide the character counter
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(responsive.radius(12)),
-                                  borderSide: BorderSide.none,
-                                ),
-                                filled: true,
-                                fillColor: Colors.transparent,
-                                contentPadding: responsive.paddingSymmetric(
-                                  horizontal: 16,
-                                  vertical: 18,
-                                ),
+                              child: SvgPicture.asset(
+                                'assets/svg/apple.svg',
+                                width: math.max(18.0, maxW * 0.06),
+                                height: math.max(18.0, maxW * 0.06),
+                                fit: BoxFit.contain,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: responsive.spacing(20)),
-                    SizedBox(
-                      width: double.infinity,
-                      height: responsive.height(56),
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handlePhoneSignIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D7A4F),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(responsive.radius(12)),
-                          ),
-                          disabledBackgroundColor: const Color(0xFF9CA3AF),
+                          ],
                         ),
-                        child: _isLoading
-                            ? SizedBox(
-                                width: responsive.width(24),
-                                height: responsive.height(24),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : Text(
-                                'Sign In with Phone',
-                                style: TextStyle(
-                                  fontSize: responsive.fontSize(16),
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                      ),
-                    ),
-                    SizedBox(height: responsive.spacing(32)),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                        ),
-                        Padding(
-                          padding: responsive.paddingSymmetric(horizontal: 16),
-                          child: Text(
-                            'Or Continue With',
-                            style: TextStyle(
-                              fontSize: responsive.fontSize(13),
-                              color: Color(0xFFD0CDC6),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                        ),
+
+                        SizedBox(height: math.max(16.0, maxH * 0.02)),
                       ],
                     ),
-                    SizedBox(height: responsive.spacing(28)),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: _isLoading ? null : _handleGoogleSignIn,
-                          child: Container(
-                            padding: responsive.paddingAll(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(responsive.radius(12)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  blurRadius: responsive.spacing(8),
-                                  offset: Offset(0, responsive.spacing(2)),
-                                ),
-                              ],
-                            ),
-                            width: responsive.width(64),
-                            child: SvgPicture.asset(
-                              'assets/svg/google.svg',
-                              width: responsive.width(24),
-                              height: responsive.height(24),
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: responsive.spacing(10)),
-                        Container(
-                          padding: responsive.paddingAll(12),
-                          width: responsive.width(64),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(responsive.radius(12)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: responsive.spacing(8),
-                                offset: Offset(0, responsive.spacing(2)),
-                              ),
-                            ],
-                          ),
-                          child: SvgPicture.asset(
-                            'assets/svg/apple.svg',
-                            width: responsive.width(24),
-                            height: responsive.height(24),
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: responsive.spacing(40)),
-                  ],
-                ),
-                            ),
-                          ),
-                        ),
-                    ],
                   ),
                 ),
-              ),
+              ],
             );
           },
         ),
@@ -755,3 +772,4 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
     );
   }
 }
+

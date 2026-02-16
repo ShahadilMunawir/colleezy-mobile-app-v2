@@ -525,10 +525,24 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF171717),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
+      body: SafeArea(
+        child: LayoutBuilder(builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          final maxH = constraints.maxHeight;
+          // Estimate reserved vertical space for header, dropdowns, info boxes and buttons.
+          // Compute wheel size from the remaining available height so it always fits.
+          final bottomNavReserve = MediaQuery.of(context).padding.bottom + math.max(12.0, maxH * 0.02);
+          final estimatedReserved = math.min(maxH * 0.52, 420.0); // heuristic reserve for header + controls
+          final availableForWheel = (maxH - estimatedReserved - bottomNavReserve).clamp(120.0, maxH);
+          // Be more conservative: limit wheel to a fraction of available vertical space to avoid overflow on tall reserved areas
+          final wheelSize = math.min(maxW * 0.86, math.min(360.0, math.max(120.0, availableForWheel * 0.6)));
+          final pointerWidth = math.max(24.0, wheelSize * 0.11);
+          final pointerHeight = math.max(18.0, wheelSize * 0.07);
+          final centerSize = math.max(44.0, wheelSize * 0.16);
+          final spinButtonWidth = math.min(maxW * 0.6, 200.0);
+          final spinButtonHeight = math.max(40.0, wheelSize * 0.10);
+
+          return Column(
               children: [
                 // Header
                 Container(
@@ -771,23 +785,23 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                   ),
                 const SizedBox(height: 10),
                 // Spin the Wheel Title
-                const Text(
+                Text(
                   'Spin the Wheel',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: math.max(18.0, wheelSize * 0.06),
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFD0CDC6),
+                    color: const Color(0xFFD0CDC6),
                   ),
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: math.max(12.0, wheelSize * 0.06)),
                 // Wheel Container
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 320,
-                        height: 320,
+                        width: wheelSize,
+                        height: wheelSize,
                         child: Stack(
                           alignment: Alignment.center,
                           children: [
@@ -798,7 +812,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                 return Transform.rotate(
                                   angle: _rotationAnimation.value,
                                   child: CustomPaint(
-                                    size: const Size(320, 320),
+                                    size: Size(wheelSize, wheelSize),
                                     painter: WheelPainter(
                                       values: _wheelValues,
                                       members: _members,
@@ -813,39 +827,39 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                             Positioned(
                               top: 0,
                               child: CustomPaint(
-                                size: const Size(40, 30),
+                                size: Size(pointerWidth, pointerHeight),
                                 painter: PointerPainter(),
                               ),
                             ),
                             // Center decoration (no longer a button)
                             Container(
-                              width: 60,
-                              height: 60,
+                              width: centerSize,
+                              height: centerSize,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF374151),
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                                    blurRadius: math.max(6.0, centerSize * 0.12),
+                                    offset: Offset(0, math.max(1.0, centerSize * 0.03)),
                                   ),
                                 ],
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.star,
                                 color: Colors.white,
-                                size: 28,
+                                size: math.max(20.0, centerSize * 0.45),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: math.max(8.0, wheelSize * 0.035)),
                       // Spin Button
                       SizedBox(
-                        width: 200,
-                        height: 56,
+                        width: spinButtonWidth,
+                        height: spinButtonHeight,
                         child: ElevatedButton(
                           onPressed: _isSpinning || _selectedGroupId == null || _members.isEmpty || _hasSpun
                               ? null
@@ -856,23 +870,23 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                             disabledBackgroundColor: const Color(0xFF6B7280),
                             disabledForegroundColor: Colors.white54,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(math.max(10.0, spinButtonHeight * 0.22)),
                             ),
                             elevation: 4,
                           ),
                           child: _isSpinning
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
+                              ? SizedBox(
+                                  width: math.max(18.0, spinButtonHeight * 0.4),
+                                  height: math.max(18.0, spinButtonHeight * 0.4),
+                                  child: const CircularProgressIndicator(
                                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     strokeWidth: 2,
                                   ),
                                 )
                               : Text(
                                   _hasSpun ? 'SPUN' : 'SPIN',
-                                  style: const TextStyle(
-                                    fontSize: 20,
+                                  style: TextStyle(
+                                    fontSize: math.max(14.0, spinButtonHeight * 0.36),
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 1.2,
                                     color: Colors.white,
@@ -883,11 +897,11 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                     ],
                   ),
                 ),
-                const SizedBox(height: 40), // Space for bottom nav bar
+                SizedBox(height: math.max(12.0, bottomNavReserve)), // Space for bottom nav bar
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
