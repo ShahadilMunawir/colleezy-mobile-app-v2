@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -29,6 +30,8 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   String? _autoDrawTime;
   Map<String, dynamic>? _selectedGroupData;
   bool _hasSpun = false; // New flag to prevent multiple spins
+  Timer? _autoDrawTimer;
+  final Map<int, DateTime> _lastAutoDrawRunPerGroup = {};
 
   // Wheel segments - will be populated with member indices
   List<int> _wheelValues = [];
@@ -124,6 +127,8 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
             _autoDraw = _selectedGroupData!['auto_draw'] as bool? ?? false;
             _autoDrawTime = _selectedGroupData!['auto_draw_time'] as String?;
           }
+          // Setup/refresh auto-draw checker for this group
+          _setupAutoDrawChecker();
         });
       }
     } catch (e) {
@@ -135,10 +140,66 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       }
     }
   }
+  
+  void _setupAutoDrawChecker() {
+    // Cancel any existing timer
+    _autoDrawTimer?.cancel();
+    _autoDrawTimer = null;
+
+    if (_selectedGroupId == null) return;
+    if (!_autoDraw) return;
+    if (_autoDrawTime == null) return;
+
+    // Immediate check and periodic checks every minute
+    _checkAndRunAutoDraw();
+    _autoDrawTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      _checkAndRunAutoDraw();
+    });
+  }
+
+  void _cancelAutoDrawChecker() {
+    _autoDrawTimer?.cancel();
+    _autoDrawTimer = null;
+  }
+
+  void _checkAndRunAutoDraw() {
+    if (_selectedGroupId == null || !_autoDraw || _autoDrawTime == null) return;
+
+    try {
+      final parts = _autoDrawTime!.split(':');
+      if (parts.length != 2) return;
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      final now = DateTime.now();
+      if (now.hour == hour && now.minute == minute) {
+        // Check last run date for this group (avoid multiple runs in same day)
+        final lastRun = _lastAutoDrawRunPerGroup[_selectedGroupId!];
+        if (lastRun != null) {
+          if (lastRun.year == now.year && lastRun.month == now.month && lastRun.day == now.day) {
+            return; // already ran today
+          }
+        }
+
+        // Trigger auto-draw (perform spin)
+        if (!_isSpinning && _members.isNotEmpty) {
+          // Allow spin even if _hasSpun is true (auto draw should override)
+          setState(() {
+            _hasSpun = false;
+          });
+          _spinWheel();
+          // record last run
+          _lastAutoDrawRunPerGroup[_selectedGroupId!] = now;
+        }
+      }
+    } catch (e) {
+      print('Error in auto-draw check: $e');
+    }
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _cancelAutoDrawChecker();
     super.dispose();
   }
 
@@ -271,6 +332,14 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
             _loadMembers(_selectedGroupId!, silent: true);
           }
         });
+        // Send group notification (best-effort) so members see the winner in-app
+        try {
+          final title = 'Winner announced';
+          final message = '$displayName is the winner for ${_selectedGroupData?['name'] ?? 'your group'}';
+          await _apiService.createNotificationForGroup(groupId: _selectedGroupId!, title: title, message: message);
+        } catch (e) {
+          print('Failed to create group notification: $e');
+        }
       } else {
         print('Failed to save draw - result was null');
       }
@@ -415,6 +484,10 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
             duration: Duration(seconds: 1),
           ),
         );
+        // Restart checker based on updated settings
+        _autoDraw = enabled;
+        _autoDrawTime = time;
+        _setupAutoDrawChecker();
       } else {
         throw Exception('Failed to update settings');
       }

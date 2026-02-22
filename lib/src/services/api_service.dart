@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:colleezy/app.dart';
+import 'package:colleezy/src/login/login.dart';
 
 class ApiService {
   // Get base URL from environment variables
@@ -14,6 +16,8 @@ class ApiService {
   // For physical devices, use your computer's IP address: http://YOUR_IP:8000/api/v1
   static String get baseUrl => dotenv.env['BASE_URL'] ?? 'http://192.168.1.14:8000/api/v1';
   static const String _tokenKey = 'backend_jwt_token';
+  // Prevent multiple simultaneous navigations to the login screen
+  static bool _isNavigatingToLogin = false;
   
   // Cache SharedPreferences instance to avoid multiple initializations
   SharedPreferences? _prefs;
@@ -120,18 +124,39 @@ class ApiService {
       // Clear the token
       await clearToken();
       
-      // Sign out from Firebase and Google Sign In
-      await Future.wait([
-        FirebaseAuth.instance.signOut(),
-        GoogleSignIn().signOut(),
-      ]);
+      // Sign out from Firebase and Google Sign In, and disconnect Google to
+      // clear any lingering account/session state.
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (e) {
+        print('Error signing out Firebase during unauthorized handling: $e');
+      }
+      try {
+        await GoogleSignIn().signOut();
+      } catch (e) {
+        print('Error signing out Google during unauthorized handling: $e');
+      }
+      try {
+        await GoogleSignIn().disconnect();
+      } catch (e) {
+        print('Error disconnecting Google during unauthorized handling: $e');
+      }
       
       // Navigate to login screen
-      if (navigatorKey.currentContext != null) {
-        navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          '/login',
+      if (navigatorKey.currentContext != null && !_isNavigatingToLogin) {
+        _isNavigatingToLogin = true;
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const LoginScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
           (route) => false,
         );
+        await Future.delayed(const Duration(milliseconds: 500));
+        _isNavigatingToLogin = false;
       }
     } catch (e) {
       print('Error during automatic logout: $e');
@@ -961,6 +986,34 @@ class ApiService {
     } catch (e) {
       print('Error getting all draws: $e');
       return [];
+    }
+  }
+
+  /// Create a notification targeted at a group (backend should distribute to members)
+  Future<bool> createNotificationForGroup({
+    required int groupId,
+    required String title,
+    required String message,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/notifications');
+      final body = <String, dynamic>{
+        'group_id': groupId,
+        'title': title,
+        'message': message,
+      };
+      final response = await http.post(url, headers: await _getHeaders(), body: jsonEncode(body));
+      if (!_checkResponseStatus(response)) {
+        return false;
+      }
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return true;
+      }
+      print('Failed to create notification: ${response.statusCode} - ${response.body}');
+      return false;
+    } catch (e) {
+      print('Error creating notification: $e');
+      return false;
     }
   }
   

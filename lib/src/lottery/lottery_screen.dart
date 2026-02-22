@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../winners/winners_screen.dart';
 
 class LotteryScreen extends StatefulWidget {
   const LotteryScreen({super.key});
@@ -226,21 +227,50 @@ class _LotteryScreenState extends State<LotteryScreen> {
           'initial': initial,
         };
       }).toList();
-
       if (!mounted) return;
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return _SelectWinnerModal(
+      // Fetch previous draws and exclude previous winners so they do not appear
+      // in the manual draw participant list.
+      Set<int> previousWinners = {};
+      try {
+        final draws = await _apiService.getGroupDraws(groupId);
+        for (var d in draws) {
+          final winnerId = d['winner_user_id'] as int?;
+          if (winnerId != null) previousWinners.add(winnerId);
+        }
+      } catch (e) {
+        // ignore - we'll still show participants
+      }
+
+      final eligibleParticipants = participants.where((p) {
+        final uid = p['user_id'] as int;
+        return !previousWinners.contains(uid);
+      }).toList();
+
+      if (eligibleParticipants.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All members have already been selected as winners.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (BuildContext context) {
+          return _SelectWinnerModal(
             groupId: groupId,
-            participants: participants,
-          getAvatarColor: _getAvatarColor,
-        );
-      },
-    );
+            participants: eligibleParticipants,
+            getAvatarColor: _getAvatarColor,
+          );
+        },
+      );
     } catch (e) {
       print('Error loading members: $e');
       if (mounted) {
@@ -259,7 +289,7 @@ class _SelectWinnerModal extends StatefulWidget {
   final int groupId;
   final List<Map<String, dynamic>> participants;
   final Color Function(int) getAvatarColor;
-
+ 
   const _SelectWinnerModal({
     required this.groupId,
     required this.participants,
@@ -469,7 +499,12 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
       );
 
       if (result != null && mounted) {
+        // Close the modal
         Navigator.pop(context);
+        // Navigate to Winners screen to show the saved winner
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (c) => const WinnersScreen()),
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Winner saved successfully!'),

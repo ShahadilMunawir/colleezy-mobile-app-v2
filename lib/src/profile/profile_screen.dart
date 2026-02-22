@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../login/login.dart';
 import '../../utils/responsive.dart';
 
 /// Minimal country data for the country code picker
@@ -155,9 +156,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await _authService.signOut();
       if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
+        Navigator.of(context).pushAndRemoveUntil(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const LoginScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
           (route) => false,
         );
       }
@@ -432,6 +438,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           });
         }
         return;
+      }
+
+      // Validate email format if user entered an email
+      final email = _emailController.text.trim();
+      if (email.isNotEmpty) {
+        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$');
+        if (!emailRegex.hasMatch(email)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please enter a valid email address.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+            setState(() {
+              _isSaving = false;
+            });
+          }
+          return;
+        }
       }
 
       String? photoUrl;

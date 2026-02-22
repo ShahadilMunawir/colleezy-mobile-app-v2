@@ -25,8 +25,9 @@ class AppTheme {
         onBackground: AppColors.textPrimary,
       ),
 
-      // Scaffold Theme
-      scaffoldBackgroundColor: AppColors.background,
+      // Scaffold Theme – dark base so route transitions don't flash a light
+      // background between dark-themed screens.
+      scaffoldBackgroundColor: const Color(0xFF171717),
 
       // AppBar Theme
       appBarTheme: const AppBarTheme(

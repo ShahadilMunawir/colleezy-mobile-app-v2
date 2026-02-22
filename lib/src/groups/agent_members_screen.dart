@@ -308,7 +308,8 @@ class _AgentMembersScreenState extends State<AgentMembersScreen> {
       onRefresh: _loadMembers,
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        // Add bottom padding to prevent items from being obscured by overlays/menus
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
         itemCount: _members.length,
         itemBuilder: (context, index) {
           final member = _members[index];

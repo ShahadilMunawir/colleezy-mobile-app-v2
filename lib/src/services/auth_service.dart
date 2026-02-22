@@ -20,6 +20,13 @@ class AuthService {
   // Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      // Clear any previous Google sign-in state so account picker/consent
+      // is presented and stale tokens don't block a fresh login.
+      try {
+        await _googleSignIn.signOut();
+        await _googleSignIn.disconnect();
+      } catch (_) {}
+
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
@@ -118,11 +125,31 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    await Future.wait([
-      _auth.signOut(),
-      _googleSignIn.signOut(),
-      _apiService.clearToken(),
-    ]);
+    // Ensure Firebase sign out
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      print('Error signing out from Firebase: $e');
+    }
+
+    // Ensure Google sign out and disconnect to clear tokens and account state
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      print('Error signing out from GoogleSignIn: $e');
+    }
+    try {
+      await _googleSignIn.disconnect();
+    } catch (e) {
+      print('Error disconnecting GoogleSignIn: $e');
+    }
+
+    // Clear backend token
+    try {
+      await _apiService.clearToken();
+    } catch (e) {
+      print('Error clearing API token: $e');
+    }
   }
 }
 

@@ -1374,7 +1374,36 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   Future<void> _handleSave() async {
     // Validate form fields
     if (!_formKey.currentState!.validate()) {
-      _showError('Please fix the errors above');
+      // Show modal popup with validation error
+      if (mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF171717),
+            title: const Text(
+              'Validation Error',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: const Text(
+              'Please fix the errors in the form before saving.',
+              style: TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK', style: TextStyle(color: Color(0xFF2D7A4F))),
+              ),
+            ],
+          ),
+        );
+        // Also show a brief toast/snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fix the errors in the form before saving.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 

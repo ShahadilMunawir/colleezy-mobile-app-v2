@@ -294,7 +294,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
       onRefresh: _loadGroups,
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
-        padding: responsive.paddingAll(20),
+        // Add extra bottom padding so items are not covered by the dashboard
+        // bottom navigation/menu overlay.
+        padding: responsive.paddingFromLTRB(20, 20, 20, 96),
         itemCount: displayedGroups.length,
         itemBuilder: (context, index) {
           final group = displayedGroups[index];

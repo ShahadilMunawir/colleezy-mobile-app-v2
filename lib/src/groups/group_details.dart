@@ -76,6 +76,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   final ApiService _apiService = ApiService();
   int _selectedTab = 0; // 0 for Members, 1 for Agents
   List<Map<String, dynamic>> _allMembers = [];
+  int? _maxMembers;
   bool _isLoading = true;
   String? _errorMessage;
   bool _currentUserIsAgent = false;
@@ -94,6 +95,16 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
     try {
       final members = await _apiService.getGroupMembers(widget.groupId);
+      
+      // Also fetch group metadata (to get configured max members) if available
+      try {
+        final group = await _apiService.getGroup(widget.groupId);
+        if (group != null && group['number_of_members'] != null) {
+          _maxMembers = (group['number_of_members'] as num).toInt();
+        }
+      } catch (e) {
+        // ignore metadata errors
+      }
       
       // Check if current user is an agent
       bool isAgent = false;
@@ -408,7 +419,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
       onRefresh: _loadMembers,
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
-        padding: responsive.paddingSymmetric(horizontal: 20),
+        // Add bottom padding so items aren't hidden by the bottom menu/overlay
+        padding: responsive.paddingFromLTRB(20, 20, 20, 96),
         itemCount: _displayedMembers.length,
         itemBuilder: (context, index) {
           final member = _displayedMembers[index];
@@ -838,6 +850,48 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                   },
                 ),
               _buildMenuOption(
+                label: 'View Collected',
+                icon: Icons.check_circle,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MemberDetailsScreen(
+                        groupId: widget.groupId,
+                        memberUserId: userId,
+                        memberName: memberName,
+                        memberRole: isAgent ? 'Agent' : 'Member',
+                        memberInitial: memberName.isNotEmpty ? memberName[0].toUpperCase() : '?',
+                        avatarColor: Colors.grey,
+                        currentUserIsAgent: _currentUserIsAgent,
+                        initialStatus: 'collected',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuOption(
+                label: 'View Pending',
+                icon: Icons.pending_actions,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MemberDetailsScreen(
+                        groupId: widget.groupId,
+                        memberUserId: userId,
+                        memberName: memberName,
+                        memberRole: isAgent ? 'Agent' : 'Member',
+                        memberInitial: memberName.isNotEmpty ? memberName[0].toUpperCase() : '?',
+                        avatarColor: Colors.grey,
+                        currentUserIsAgent: _currentUserIsAgent,
+                        initialStatus: 'pending',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildMenuOption(
                 label: 'Remove Member',
                 icon: Icons.person_remove,
                 isDestructive: true,
@@ -943,6 +997,16 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
   }
 
   void _showAddMemberModal(BuildContext context) {
+    // Prevent adding members beyond configured maximum
+    if (_maxMembers != null && _allMembers.length >= _maxMembers!) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Cannot add member — group already has maximum of $_maxMembers members.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     final TextEditingController nameController = TextEditingController();
     final TextEditingController phoneController = TextEditingController();
     final TextEditingController contactSearchController = TextEditingController();

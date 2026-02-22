@@ -13,6 +13,7 @@ class MemberDetailsScreen extends StatefulWidget {
   final String memberInitial;
   final Color avatarColor;
   final bool currentUserIsAgent;
+  final String? initialStatus; // Optional: show only transactions with this status initially
   final int? initialYear; // Optional: Year to auto-select when opening transaction modal
   final int? initialMonth; // Optional: Month to auto-select when opening transaction modal
 
@@ -25,6 +26,7 @@ class MemberDetailsScreen extends StatefulWidget {
     required this.memberInitial,
     required this.avatarColor,
     required this.currentUserIsAgent,
+    this.initialStatus,
     this.initialYear,
     this.initialMonth,
   });
@@ -51,6 +53,8 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    // Use initialStatus if provided
+    _selectedStatus = widget.initialStatus ?? 'collected';
     _loadGroupDetails();
     _loadTransactions();
     
@@ -473,7 +477,17 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       );
     }
 
-    if (_transactions.isEmpty) {
+    // Filter transactions by selected status
+    final filteredTransactions = _transactions.where((t) {
+      final status = t['status'] as String? ?? 'collected';
+      if (_selectedStatus == 'pending') {
+        // Treat 'pending' as either 'pending' or 'partially_collected'
+        return status == 'pending' || status == 'partially_collected';
+      }
+      return status == _selectedStatus;
+    }).toList();
+
+    if (filteredTransactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -512,9 +526,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       color: const Color(0xFF2D7A4F),
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        itemCount: _transactions.length,
+        itemCount: filteredTransactions.length,
         itemBuilder: (context, index) {
-          final transaction = _transactions[index];
+          final transaction = filteredTransactions[index];
           final amount = (transaction['amount'] as num?)?.toDouble() ?? 0.0;
           final dueAmount = (transaction['due_amount'] as num?)?.toDouble() ?? 0.0;
           final status = transaction['status'] as String? ?? 'collected';

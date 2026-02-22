@@ -671,7 +671,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               children: [
                                 Text(
-                                  'Dream Big . Start small. Act now.',
+                                  'Dream Big . Start Small . Act Now.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: responsive.fontSize(16),
