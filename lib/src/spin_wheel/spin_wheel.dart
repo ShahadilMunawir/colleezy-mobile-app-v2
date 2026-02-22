@@ -473,6 +473,9 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
         'duration': _selectedGroupData!['duration'],
         'amount_per_period': _selectedGroupData!['amount_per_period'],
         'collection_period': _selectedGroupData!['collection_period'],
+        // Ensure required fields are present to avoid 422 validation errors
+        'number_of_members': _selectedGroupData!['number_of_members'],
+        'currency': _selectedGroupData!['currency'],
       });
 
       if (success != null) {
