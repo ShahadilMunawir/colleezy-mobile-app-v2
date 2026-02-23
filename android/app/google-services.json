@@ -1,33 +1,49 @@
 {
   "project_info": {
-    "project_number": "839736537820",
-    "project_id": "colleezy-f1638",
-    "storage_bucket": "colleezy-f1638.firebasestorage.app"
+    "project_number": "678805143558",
+    "project_id": "colleezy-e1017",
+    "storage_bucket": "colleezy-e1017.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:839736537820:android:8d6b56f2abfaeaf6b9ba19",
+        "mobilesdk_app_id": "1:678805143558:android:5d5ab4ab3ca9f5ed2cc387",
         "android_client_info": {
-          "package_name": "com.example.colleezy"
+          "package_name": "com.tecorez.colleezy"
         }
       },
       "oauth_client": [
         {
-          "client_id": "839736537820-9d1qe2ffe8lvqc4fvha4gmf6ejpu03p8.apps.googleusercontent.com",
+          "client_id": "678805143558-a2vqe2qdgbjissinmsktmd4hbr5rvqg8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tecorez.colleezy",
+            "certificate_hash": "37288a8e45d84c97309acb4729b58f6ebb9ac815"
+          }
+        },
+        {
+          "client_id": "678805143558-hgs1rt382rtoe7ta0m4eu7sunbji6h4s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tecorez.colleezy",
+            "certificate_hash": "a239a2bf001d085a8ebfc702165e580a37dafdee"
+          }
+        },
+        {
+          "client_id": "678805143558-48n4ilpg1levi2d58ae5oepv4efa1htk.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCbnLeQ1kX63IW9fSqOKRv0DiMlluhJ_40"
+          "current_key": "AIzaSyC8LrwngwAaDJ__q16k-E2ubz0IbsqgC3k"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "839736537820-9d1qe2ffe8lvqc4fvha4gmf6ejpu03p8.apps.googleusercontent.com",
+              "client_id": "678805143558-48n4ilpg1levi2d58ae5oepv4efa1htk.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
