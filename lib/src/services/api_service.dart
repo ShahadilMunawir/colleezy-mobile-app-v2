@@ -883,6 +883,7 @@ class ApiService {
     required int winnerUserId,
     required String drawType, // 'spin_wheel' or 'manual_draw'
     int? periodNumber,
+    String? drawDate, // YYYY-MM-DD format, used to derive period_number based on kuri frequency
     String? notes,
   }) async {
     try {
@@ -895,6 +896,9 @@ class ApiService {
       
       if (periodNumber != null) {
         body['period_number'] = periodNumber;
+      }
+      if (drawDate != null && drawDate.isNotEmpty) {
+        body['draw_date'] = drawDate;
       }
       if (notes != null && notes.isNotEmpty) {
         body['notes'] = notes;

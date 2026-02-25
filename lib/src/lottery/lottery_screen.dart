@@ -199,8 +199,20 @@ class _LotteryScreenState extends State<LotteryScreen> {
   }
 
   Future<void> _showSelectWinnerModal(BuildContext context, int groupId) async {
-    // Load members for this group
+    // Load group details and members
     try {
+      final group = await _apiService.getGroup(groupId);
+      if (group == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to load group details'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
       final members = await _apiService.getGroupMembers(groupId);
       
       // Convert members to participants format
@@ -266,6 +278,7 @@ class _LotteryScreenState extends State<LotteryScreen> {
         builder: (BuildContext context) {
           return _SelectWinnerModal(
             groupId: groupId,
+            groupData: group,
             participants: eligibleParticipants,
             getAvatarColor: _getAvatarColor,
           );
@@ -287,11 +300,13 @@ class _LotteryScreenState extends State<LotteryScreen> {
 
 class _SelectWinnerModal extends StatefulWidget {
   final int groupId;
+  final Map<String, dynamic> groupData;
   final List<Map<String, dynamic>> participants;
   final Color Function(int) getAvatarColor;
  
   const _SelectWinnerModal({
     required this.groupId,
+    required this.groupData,
     required this.participants,
     required this.getAvatarColor,
   });
@@ -302,8 +317,89 @@ class _SelectWinnerModal extends StatefulWidget {
 
 class _SelectWinnerModalState extends State<_SelectWinnerModal> {
   int? selectedWinnerUserId;
+  DateTime? _selectedDate;
   final ApiService _apiService = ApiService();
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    final first = _getFirstDate();
+    final last = _getLastDate();
+    if (now.isBefore(first)) {
+      _selectedDate = first;
+    } else if (now.isAfter(last)) {
+      _selectedDate = last;
+    } else {
+      _selectedDate = now;
+    }
+  }
+
+  DateTime _getFirstDate() {
+    final startStr = widget.groupData['starting_date'] as String?;
+    if (startStr == null) return DateTime.now();
+    final parts = startStr.split('-');
+    if (parts.length != 3) return DateTime.now();
+    return DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
+  }
+
+  DateTime _getLastDate() {
+    final start = _getFirstDate();
+    final duration = widget.groupData['duration'] as int? ?? 12;
+    final collectionPeriod = (widget.groupData['collection_period'] as String? ?? 'monthly').toLowerCase();
+    final frequencyInDays = widget.groupData['frequency_in_days'] as num?;
+    if (frequencyInDays != null) {
+      return start.add(Duration(days: (duration * frequencyInDays.toDouble()).toInt()));
+    }
+    if (collectionPeriod == 'weekly') {
+      return start.add(Duration(days: duration * 7));
+    }
+    // Monthly
+    return DateTime(start.year, start.month + duration, start.day);
+  }
+
+  String _getFrequencyLabel() {
+    final collectionPeriod = (widget.groupData['collection_period'] as String? ?? 'monthly').toLowerCase();
+    final frequencyInDays = widget.groupData['frequency_in_days'] as num?;
+    if (frequencyInDays != null) {
+      if (frequencyInDays <= 1) return 'Daily';
+      if (frequencyInDays <= 7) return 'Weekly';
+      if (frequencyInDays <= 31) return 'Every ${frequencyInDays.toInt()} days';
+      return 'Monthly';
+    }
+    return collectionPeriod == 'weekly' ? 'Weekly' : 'Monthly';
+  }
+
+  Future<void> _selectDate() async {
+    final first = _getFirstDate();
+    final last = _getLastDate();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: first,
+      lastDate: last,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF2D7A4F),
+              surface: Color(0xFF171717),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -338,6 +434,64 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
                 fontFamily: 'DM Sans',
+              ),
+            ),
+          ),
+          // Date selector (based on kuri frequency)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: InkWell(
+              onTap: _selectDate,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF232220),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF3A3A3A)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      color: Color(0xFF2D7A4F),
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Draw date (${_getFrequencyLabel()} kuri)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFFA5A5A5),
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _selectedDate != null
+                                ? '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}'
+                                : 'Select date',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                              fontFamily: 'DM Sans',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFA5A5A5),
+                      size: 24,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -492,10 +646,14 @@ class _SelectWinnerModalState extends State<_SelectWinnerModal> {
     });
 
     try {
+      final drawDateStr = _selectedDate != null
+          ? '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}'
+          : null;
       final result = await _apiService.createDraw(
         groupId: widget.groupId,
         winnerUserId: selectedWinnerUserId!,
         drawType: 'manual_draw',
+        drawDate: drawDateStr,
       );
 
       if (result != null && mounted) {
