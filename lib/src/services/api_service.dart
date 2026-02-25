@@ -171,6 +171,24 @@ class ApiService {
     }
     return true;
   }
+
+  /// Get server's current date for validation (handles device/server date mismatch)
+  Future<DateTime?> getServerDate() async {
+    try {
+      final url = Uri.parse('$baseUrl/health/date');
+      final response = await http.get(url, headers: await _getHeaders());
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final dateStr = data['date'] as String?;
+        if (dateStr != null) {
+          return DateTime.parse(dateStr);
+        }
+      }
+    } catch (e) {
+      print('Error getting server date: $e');
+    }
+    return null;
+  }
   
   /// Create or update a user in the backend after Firebase authentication
   Future<Map<String, dynamic>?> createUserFromFirebase(User firebaseUser) async {
@@ -828,11 +846,25 @@ class ApiService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         print('Failed to create transaction: ${response.statusCode} - ${response.body}');
-        return null;
+        // Parse backend error detail to show user-friendly message
+        String detail = 'Failed to record transaction. Please try again.';
+        try {
+          final err = jsonDecode(response.body);
+          if (err is Map<String, dynamic>) {
+            final d = err['detail'];
+            if (d is String) {
+              detail = d;
+            } else if (d is List && d.isNotEmpty && d.first is Map) {
+              final first = d.first as Map;
+              detail = first['msg']?.toString() ?? detail;
+            }
+          }
+        } catch (_) {}
+        throw Exception(detail);
       }
     } catch (e) {
       print('Error creating transaction: $e');
-      return null;
+      rethrow;
     }
   }
   

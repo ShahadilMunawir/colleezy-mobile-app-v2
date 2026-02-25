@@ -38,6 +38,7 @@ class MemberDetailsScreen extends StatefulWidget {
 class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   final ApiService _apiService = ApiService();
   String _selectedStatus = 'collected';
+  String _listFilterStatus = 'all'; // 'all', 'collected', 'partially_collected' - filter for transaction list
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _dueController = TextEditingController();
   List<Map<String, dynamic>> _transactions = [];
@@ -46,15 +47,32 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
   double? _amountPerPeriod; // Store the group's amount_per_period
   String _currencyCode = 'INR';
   DateTime? _groupStartingDate; // Store the group's starting_date
+  double? _frequencyInDays; // Custom frequency (e.g. 15 for bi-weekly). Null = use collection_period
+  String? _collectionPeriod; // 'WEEKLY' or 'MONTHLY'
   DateTime? _selectedTransactionDate; // Will be set based on current month payment status
   Set<String> _fullyCollectedMonths = {}; // Set of "YYYY-MM" strings for months fully collected
   Set<String> _partialOnlyMonths = {}; // Set of "YYYY-MM" strings for months with only partial collections
+  DateTime? _serverDate; // Server's current date (for validation when device date may differ)
+
+  /// Returns "today" for validation: server date if available, else device date
+  DateTime get _todayForValidation => _serverDate ?? DateTime.now();
+
+  /// Returns the latest selectable date for the picker (max of server and device date)
+  /// so the user can always choose their "today" when server date may be behind
+  DateTime get _lastSelectableDate {
+    final server = _todayForValidation;
+    final device = DateTime.now();
+    return server.isAfter(device)
+        ? DateTime(server.year, server.month, server.day)
+        : DateTime(device.year, device.month, device.day);
+  }
 
   @override
   void initState() {
     super.initState();
     // Use initialStatus if provided
     _selectedStatus = widget.initialStatus ?? 'collected';
+    _listFilterStatus = widget.initialStatus ?? 'all';
     _loadGroupDetails();
     _loadTransactions();
     
@@ -88,10 +106,14 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
           }
         }
         final currencyCode = (group['currency'] as String?) ?? 'INR';
+        final frequencyInDays = (group['frequency_in_days'] as num?)?.toDouble();
+        final collectionPeriod = group['collection_period'] as String?;
         setState(() {
           _amountPerPeriod = amountPerPeriod;
           _groupStartingDate = startingDate;
           _currencyCode = currencyCode;
+          _frequencyInDays = frequencyInDays;
+          _collectionPeriod = collectionPeriod;
         });
         // Update global fallback currency
         CurrencyService.instance.setCurrency(currencyCode);
@@ -194,14 +216,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       return false;
     }
     
-    // Calculate period number for the selected date
-    final start = _groupStartingDate!;
-    int periodNumber;
-    
-    // For monthly groups, calculate period based on year and month difference
-    final yearDiff = date.year - start.year;
-    final monthDiff = date.month - start.month;
-    periodNumber = yearDiff * 12 + monthDiff + 1;
+    final periodNumber = _calculatePeriodNumber(date);
     
     // Check if there are any transactions for this period
     bool hasPartialTransaction = false;
@@ -229,9 +244,9 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
     return false;
   }
   
-  // Check if the current month is fully paid
+  // Check if the current month is fully paid (uses server date when available)
   bool _isCurrentMonthFullyPaid() {
-    final now = DateTime.now();
+    final now = _todayForValidation;
     final monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
     return _fullyCollectedMonths.contains(monthKey);
   }
@@ -244,28 +259,32 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
     if (_isCurrentMonthFullyPaid()) {
       return null;
     }
-    // For "collected" status, show today as default if current month is not fully paid
-    if (status == 'collected' || status == null) {
-      return DateTime.now();
-    }
-    // For partial payments, also show today as default if current month is not fully paid
-    return DateTime.now();
+    // Use _lastSelectableDate so default is user's "today" (not server's yesterday)
+    return _lastSelectableDate;
   }
   
+  /// Calculate period number to match backend (transaction.py calculate_period_number)
+  int _calculatePeriodNumber(DateTime date) {
+    if (_groupStartingDate == null) return 0;
+    final start = _groupStartingDate!;
+    final startDate = DateTime(start.year, start.month, start.day);
+    final txDate = DateTime(date.year, date.month, date.day);
+    if (txDate.isBefore(startDate)) return 0;
+    final daysDiff = txDate.difference(startDate).inDays;
+    if (_frequencyInDays != null && _frequencyInDays! > 0) {
+      return (daysDiff / _frequencyInDays!).floor() + 1;
+    }
+    if (_collectionPeriod == 'WEEKLY') {
+      return (daysDiff / 7).floor() + 1;
+    }
+    // Monthly
+    return (date.year - start.year) * 12 + (date.month - start.month) + 1;
+  }
+
   // Calculate total collected for the selected period/month
   double _getTotalCollectedForPeriod(DateTime date) {
     if (_groupStartingDate == null) return 0.0;
-    
-    // Calculate period number for the selected date
-    final start = _groupStartingDate!;
-    int periodNumber;
-    
-    // For monthly groups, calculate period based on year and month difference
-    final yearDiff = date.year - start.year;
-    final monthDiff = date.month - start.month;
-    periodNumber = yearDiff * 12 + monthDiff + 1;
-    
-    // Sum all transactions for this period
+    final periodNumber = _calculatePeriodNumber(date);
     double total = 0.0;
     for (var transaction in _transactions) {
       final periodNum = transaction['period_number'] as int?;
@@ -274,7 +293,6 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
         total += amount;
       }
     }
-    
     return total;
   }
   
@@ -376,6 +394,19 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                 ),
               ),
             ),
+            // Status filter chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  _buildFilterChip('All', 'all'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Collected', 'collected'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Partial', 'partially_collected'),
+                ],
+              ),
+            ),
             // Transactions List
             Expanded(
               child: _buildTransactionsList(),
@@ -442,6 +473,29 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
     );
   }
 
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _listFilterStatus == value;
+    return GestureDetector(
+      onTap: () => setState(() => _listFilterStatus = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF2D7A4F) : const Color(0xFF232220),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFFA5A5A5),
+            fontFamily: 'DM Sans',
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTransactionsList() {
     if (_isLoading) {
       return const Center(
@@ -477,14 +531,14 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       );
     }
 
-    // Filter transactions by selected status
+    // Filter transactions by list filter status
     final filteredTransactions = _transactions.where((t) {
       final status = t['status'] as String? ?? 'collected';
-      if (_selectedStatus == 'pending') {
-        // Treat 'pending' as either 'pending' or 'partially_collected'
+      if (_listFilterStatus == 'all') return true;
+      if (_listFilterStatus == 'pending') {
         return status == 'pending' || status == 'partially_collected';
       }
-      return status == _selectedStatus;
+      return status == _listFilterStatus;
     }).toList();
 
     if (filteredTransactions.isEmpty) {
@@ -640,26 +694,43 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
     );
   }
 
-  void _showCollectNewModal(BuildContext context) {
+  void _showCollectNewModal(BuildContext context) async {
+    // Fetch server date first (handles device/server date mismatch)
+    final serverDate = await _apiService.getServerDate();
+    if (mounted) {
+      setState(() {
+        _serverDate = serverDate;
+      });
+    }
+
     // Load transaction months when opening modal first
     _loadTransactionMonths();
     
     // Reset form when opening modal
-    setState(() {
-      // Set default transaction date
-      // If initialYear and initialMonth are provided, use them; otherwise use default logic
-      if (widget.initialYear != null && widget.initialMonth != null) {
-        // Use the provided year and month, set to first day of the month
-        _selectedTransactionDate = DateTime(widget.initialYear!, widget.initialMonth!, 1);
-        // When navigated from All Dues page, default to "partially_collected" since there's a due amount
-        _selectedStatus = 'partially_collected';
-      } else {
-        // Default to "collected" status for normal navigation
-        _selectedStatus = 'collected';
-        // Set default transaction date for "collected" status
-        // Show today if current month is not fully paid, else null
-        _selectedTransactionDate = _getDefaultTransactionDate(status: 'collected');
-      }
+    if (mounted) {
+      setState(() {
+        // Set default transaction date
+        // If initialYear and initialMonth are provided, use them; otherwise use default logic
+        if (widget.initialYear != null && widget.initialMonth != null) {
+          final today = _lastSelectableDate;
+          // Use today if it falls in the selected month, otherwise 1st of that month
+          var date = (today.year == widget.initialYear && today.month == widget.initialMonth)
+              ? today
+              : DateTime(widget.initialYear!, widget.initialMonth!, 1);
+          final maxDate = _lastSelectableDate;
+          if (date.isAfter(maxDate)) {
+            date = maxDate;
+          }
+          _selectedTransactionDate = date;
+          // When navigated from All Dues page, default to "partially_collected" since there's a due amount
+          _selectedStatus = 'partially_collected';
+        } else {
+          // Default to "collected" status for normal navigation
+          _selectedStatus = 'collected';
+          // Set default transaction date for "collected" status
+          // Show today if current month is not fully paid, else null
+          _selectedTransactionDate = _getDefaultTransactionDate(status: 'collected');
+        }
       
       // Check if the selected date's month only allows partial collections
       final isPartialOnly = _selectedTransactionDate != null && _isPartialOnlyMonth(_selectedTransactionDate!);
@@ -686,6 +757,7 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
       }
       _dueController.clear();
     });
+    }
     
     // Calculate initial due amount if partial collection and amount is set
     // Calculate due amount if status is partially_collected (either from All Dues navigation or partial-only month)
@@ -890,13 +962,16 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           }
                           
                           final firstDate = _groupStartingDate ?? DateTime(2020);
-                          final lastDate = DateTime.now();
+                          final lastDate = _lastSelectableDate;
                           
                           // Find a valid initial date that satisfies the predicate
+                          // Must be on or before lastDate (transaction date cannot be in the future)
                           DateTime? initialDate;
                           
-                          // First, check if the currently selected date is selectable
-                          if (_selectedTransactionDate != null && isDateSelectable(_selectedTransactionDate!)) {
+                          // First, check if the currently selected date is selectable and not in the future
+                          if (_selectedTransactionDate != null &&
+                              isDateSelectable(_selectedTransactionDate!) &&
+                              !_selectedTransactionDate!.isAfter(lastDate)) {
                             initialDate = _selectedTransactionDate;
                           } else {
                             // Try to find a selectable date by going backwards from today
@@ -957,6 +1032,13 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               ),
                             );
                             return;
+                          }
+                          
+                          // Clamp initialDate to valid range - showDatePicker requires initialDate >= firstDate and initialDate <= lastDate
+                          if (initialDate.isBefore(firstDate)) {
+                            initialDate = firstDate;
+                          } else if (initialDate.isAfter(lastDate)) {
+                            initialDate = lastDate;
                           }
                           
                           final DateTime? picked = await showDatePicker(
@@ -1117,11 +1199,10 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                           return;
                         }
                         
-                        final today = DateTime.now();
-                        final todayDate = DateTime(today.year, today.month, today.day);
+                        final maxDate = _lastSelectableDate;
                         final selectedDate = DateTime(_selectedTransactionDate!.year, _selectedTransactionDate!.month, _selectedTransactionDate!.day);
                         
-                        if (selectedDate.isAfter(todayDate)) {
+                        if (selectedDate.isAfter(maxDate)) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Transaction date cannot be in the future'),
@@ -1153,6 +1234,23 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                             ),
                           );
                           return;
+                        }
+                        
+                        // Validate total collected for period would not exceed period amount
+                        if (_amountPerPeriod != null && _selectedTransactionDate != null) {
+                          final totalCollected = _getTotalCollectedForPeriod(_selectedTransactionDate!);
+                          if (totalCollected + amount > _amountPerPeriod!) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Total collected for this period would exceed ${formatCurrency(_amountPerPeriod!, _currencyCode)}. '
+                                  'Remaining to collect: ${formatCurrency(_amountPerPeriod! - totalCollected, _currencyCode)}.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
                         }
                         
                         // Show loading
@@ -1202,13 +1300,18 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                             // Clear form
                             _amountController.clear();
                             _dueController.clear();
+                            // Keep filter on the status we just added so the new transaction appears
+                            final addedStatus = status;
                             setState(() {
-                              _selectedStatus = 'collected';
+                              _selectedStatus = addedStatus;
+                              _listFilterStatus = addedStatus;
                             });
                             
-                            // Refresh transactions and transaction months
-                            _loadTransactions();
-                            _loadTransactionMonths();
+                            // Refresh transactions and transaction months (await so list updates)
+                            if (mounted) {
+                              await _loadTransactions();
+                              await _loadTransactionMonths();
+                            }
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1219,34 +1322,32 @@ class _MemberDetailsScreenState extends State<MemberDetailsScreen> {
                               );
                             }
                           }
-                          } catch (e) {
-                            // Close loading
-                            if (mounted) {
-                              Navigator.pop(context); // Close loading
-                            }
-                            
-                            // Parse error message from API response if available
-                            String errorMessage = 'Error creating transaction';
-                            final errorStr = e.toString();
-                            if (errorStr.contains('Transaction for period')) {
-                              errorMessage = 'A transaction for this period already exists';
-                            } else if (errorStr.contains('cannot be in the future')) {
-                              errorMessage = 'Transaction date cannot be in the future';
-                            } else if (errorStr.contains('cannot be before group start date')) {
-                              errorMessage = 'Transaction date cannot be before group start date';
-                            } else if (errorStr.isNotEmpty) {
-                              errorMessage = errorStr;
-                            }
-                            
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(errorMessage),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
+                        } catch (e) {
+                          // Close loading
+                          if (mounted) {
+                            Navigator.pop(context); // Close loading
                           }
+                          
+                          // Parse error message from API response
+                          String errorMessage = 'Failed to record transaction. Please try again.';
+                          final errorStr = e.toString();
+                          // Strip "Exception: " prefix if present
+                          final msg = errorStr.startsWith('Exception: ')
+                              ? errorStr.substring(11)
+                              : errorStr;
+                          if (msg.isNotEmpty) {
+                            errorMessage = msg;
+                          }
+                          
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(errorMessage),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2D7A4F),

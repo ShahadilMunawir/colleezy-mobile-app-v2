@@ -6,9 +6,10 @@ import '../../utils/responsive.dart';
 import '../../utils/currency.dart';
 
 class HistoryScreen extends StatefulWidget {
+  final bool isVisible;
   final Function(VoidCallback)? onVisible;
 
-  const HistoryScreen({super.key, this.onVisible});
+  const HistoryScreen({super.key, this.isVisible = false, this.onVisible});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -41,6 +42,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Re-register callback if it changed
     if (widget.onVisible != oldWidget.onVisible) {
       widget.onVisible?.call(refreshData);
+    }
+    // Refresh when tab becomes visible (ensures data loads when navigating to this screen)
+    if (widget.isVisible && !oldWidget.isVisible) {
+      refreshData();
     }
   }
 

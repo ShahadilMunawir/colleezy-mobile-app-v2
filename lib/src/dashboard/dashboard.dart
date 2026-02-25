@@ -35,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ),
     const DrawSelectionScreen(),
     HistoryScreen(
+      isVisible: _selectedIndex == 3,
       onVisible: (callback) {
         _historyRefreshCallback = callback;
       },

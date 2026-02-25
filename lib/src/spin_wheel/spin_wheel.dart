@@ -32,6 +32,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   bool _autoDraw = false;
   String? _autoDrawTime;
   Map<String, dynamic>? _selectedGroupData;
+  DateTime? _selectedDrawDate; // Date for the draw, chosen before spinning
   bool _hasSpun = false; // New flag to prevent multiple spins
   Timer? _autoDrawTimer;
   final Map<int, DateTime> _lastAutoDrawRunPerGroup = {};
@@ -179,7 +180,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
           setState(() {
             _hasSpun = false;
           });
-          _spinWheel();
+          _spinWheel(isAutoDraw: true);
           // record last run
           _lastAutoDrawRunPerGroup[_selectedGroupId!] = now;
         }
@@ -248,7 +249,85 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     return 0;
   }
 
-  Future<void> _showWinnerDialog(int winningSegmentIndex) async {
+  DateTime _getFirstDate() {
+    if (_selectedGroupData == null) return DateTime.now();
+    final startStr = _selectedGroupData!['starting_date'] as String?;
+    if (startStr == null) return DateTime.now();
+    final parts = startStr.split('-');
+    if (parts.length != 3) return DateTime.now();
+    return DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
+    );
+  }
+
+  DateTime _getLastDate() {
+    if (_selectedGroupData == null) return DateTime.now();
+    final start = _getFirstDate();
+    final duration = _selectedGroupData!['duration'] as int? ?? 12;
+    final collectionPeriod = (_selectedGroupData!['collection_period'] as String? ?? 'monthly').toLowerCase();
+    final frequencyInDays = _selectedGroupData!['frequency_in_days'] as num?;
+    if (frequencyInDays != null) {
+      return start.add(Duration(days: (duration * frequencyInDays.toDouble()).toInt()));
+    }
+    if (collectionPeriod == 'weekly') {
+      return start.add(Duration(days: duration * 7));
+    }
+    return DateTime(start.year, start.month + duration, start.day);
+  }
+
+  String _getFrequencyLabel() {
+    if (_selectedGroupData == null) return 'Monthly';
+    final collectionPeriod = (_selectedGroupData!['collection_period'] as String? ?? 'monthly').toLowerCase();
+    final frequencyInDays = _selectedGroupData!['frequency_in_days'] as num?;
+    if (frequencyInDays != null) {
+      if (frequencyInDays <= 1) return 'Daily';
+      if (frequencyInDays <= 7) return 'Weekly';
+      if (frequencyInDays <= 31) return 'Every ${frequencyInDays.toInt()} days';
+      return 'Monthly';
+    }
+    return collectionPeriod == 'weekly' ? 'Weekly' : 'Monthly';
+  }
+
+  DateTime _computeDefaultDrawDate() {
+    final now = DateTime.now();
+    if (_selectedGroupData == null) return now;
+    final first = _getFirstDate();
+    final last = _getLastDate();
+    if (now.isBefore(first)) return first;
+    if (now.isAfter(last)) return last;
+    return now;
+  }
+
+  Future<void> _selectDrawDate() async {
+    if (_selectedGroupData == null) return;
+    final first = _getFirstDate();
+    final last = _getLastDate();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDrawDate ?? _computeDefaultDrawDate(),
+      firstDate: first,
+      lastDate: last,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF2D7A4F),
+              surface: Color(0xFF171717),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDrawDate = picked);
+    }
+  }
+
+  Future<void> _showWinnerDialog(int winningSegmentIndex, {bool isAutoDraw = false}) async {
     if (_selectedGroupId == null || _members.isEmpty) {
       return;
     }
@@ -274,13 +353,22 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       }
     }
 
-    // Save the draw result
+    // Use the date chosen before spinning (or today for auto-draw)
+    final DateTime drawDate = isAutoDraw
+        ? _computeDefaultDrawDate()
+        : (_selectedDrawDate ?? _computeDefaultDrawDate());
+
+    if (!mounted) return;
+
+    // Save the draw with the pre-selected date
     bool drawSaved = false;
     try {
+      final drawDateStr = '${drawDate.year}-${drawDate.month.toString().padLeft(2, '0')}-${drawDate.day.toString().padLeft(2, '0')}';
       final result = await _apiService.createDraw(
         groupId: _selectedGroupId!,
         winnerUserId: winnerUserId,
         drawType: 'spin_wheel',
+        drawDate: drawDateStr,
       );
       drawSaved = result != null;
       if (drawSaved) {
@@ -351,21 +439,22 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF171717),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Congratulations!',
+    if (drawSaved && !isAutoDraw) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: const Color(0xFF171717),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Congratulations!',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -445,6 +534,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
         );
       },
     );
+    }
   }
 
   Future<void> _updateAutoDrawSettings(bool enabled, String? time) async {
@@ -597,7 +687,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     });
   }
 
-  void _spinWheel() {
+  void _spinWheel({bool isAutoDraw = false}) {
     if (_isSpinning || _selectedGroupId == null || _members.isEmpty) {
       if (_selectedGroupId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -659,7 +749,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
       
       // Calculate and show winner
       final winningSegmentIndex = _getWinningSegment(finalAngle);
-      _showWinnerDialog(winningSegmentIndex);
+      _showWinnerDialog(winningSegmentIndex, isAutoDraw: false);
     });
   }
 
@@ -798,6 +888,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                   _selectedGroupData = selectedGroup;
                                   _members = [];
                                   _wheelValues = [];
+                                  _selectedDrawDate = _computeDefaultDrawDate();
                                 });
                                 _loadMembers(groupId);
                               }
@@ -845,6 +936,65 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                // Draw date selector (chosen before spinning)
+                if (_selectedGroupId != null && !_isLoadingMembers && _selectedGroupData != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: InkWell(
+                      onTap: _selectDrawDate,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141414),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF3A3A3A)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              color: Color(0xFF2D7A4F),
+                              size: 22,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Draw date (${_getFrequencyLabel()} kuri)',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFFA5A5A5),
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _selectedDrawDate != null
+                                        ? '${_selectedDrawDate!.year}-${_selectedDrawDate!.month.toString().padLeft(2, '0')}-${_selectedDrawDate!.day.toString().padLeft(2, '0')}'
+                                        : 'Select date',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                      fontFamily: 'DM Sans',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Color(0xFFA5A5A5),
+                              size: 24,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
