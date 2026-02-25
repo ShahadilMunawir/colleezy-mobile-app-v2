@@ -14,19 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "678805143558-a2vqe2qdgbjissinmsktmd4hbr5rvqg8.apps.googleusercontent.com",
+          "client_id": "678805143558-nu06h159tn0rl4lss6f2ohtgbc3mtteo.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.tecorez.colleezy",
-            "certificate_hash": "37288a8e45d84c97309acb4729b58f6ebb9ac815"
-          }
-        },
-        {
-          "client_id": "678805143558-hgs1rt382rtoe7ta0m4eu7sunbji6h4s.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.tecorez.colleezy",
-            "certificate_hash": "a239a2bf001d085a8ebfc702165e580a37dafdee"
+            "certificate_hash": "db55da9f7b4a3e40b0953c403c806627995257c7"
           }
         },
         {

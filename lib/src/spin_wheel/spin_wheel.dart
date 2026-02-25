@@ -12,10 +12,13 @@ class SpinWheelScreen extends StatefulWidget {
 }
 
 class _SpinWheelScreenState extends State<SpinWheelScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final ApiService _apiService = ApiService();
-  late AnimationController _controller;
-  late Animation<double> _rotationAnimation;
+  AnimationController? _controller;
+  AnimationController? _shuffleController;
+  Animation<double>? _rotationAnimation;
+  Animation<double>? _shuffleRotationAnimation;
+  bool _isShuffleAnimating = false;
   int? _selectedGroupId;
   String? _selectedGroupName;
   bool _isSpinning = false;
@@ -41,17 +44,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    );
-    _rotationAnimation = Tween<double>(
-      begin: 0,
-      end: 0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.decelerate,
-    ));
+    // _controller and _shuffleController are created per-spin/per-shuffle with duration based on total rotation
     _loadGroups();
   }
 
@@ -198,7 +191,8 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
+    _shuffleController?.dispose();
     _cancelAutoDrawChecker();
     super.dispose();
   }
@@ -540,6 +534,69 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     }
   }
 
+  /// Returns the rotation angle (in 0..2π) that places the given segment under the pointer.
+  double _angleForSegment(int segmentIndex) {
+    final segmentAngle = (2 * math.pi) / _wheelValues.length;
+    return (2 * math.pi - (segmentIndex + 0.5) * segmentAngle) % (2 * math.pi);
+  }
+
+  void _shuffleWheel() {
+    if (_isSpinning || _isShuffleAnimating || _members.isEmpty) return;
+    final random = math.Random(DateTime.now().microsecondsSinceEpoch);
+    final segmentCount = _wheelValues.length;
+    final currentSegment = _getWinningSegment(_rotationAngle);
+    // Pick a different segment for the pointer to land on
+    int targetSegment;
+    if (segmentCount <= 1) {
+      targetSegment = 0;
+    } else {
+      targetSegment = random.nextInt(segmentCount - 1);
+      if (targetSegment >= currentSegment) targetSegment += 1;
+    }
+    final targetAngle = _angleForSegment(targetSegment);
+    final fullRotations = 2 + random.nextInt(2); // 2-3 full spins for animation
+    final currentNormalized = _rotationAngle % (2 * math.pi);
+    double delta = (targetAngle - currentNormalized + 2 * math.pi) % (2 * math.pi);
+    if (delta < 0.1) delta = 2 * math.pi; // Ensure we spin at least one full rotation
+    final totalRotation = (fullRotations * 2 * math.pi) + delta;
+    final newEndAngle = _rotationAngle + totalRotation;
+    // Duration proportional to rotation so angular speed is always consistent
+    final rotations = totalRotation / (2 * math.pi);
+    final durationMs = (rotations * 2000).round().clamp(4000, 8000); // ~2 sec per rotation, 4-8 sec total
+    _shuffleController?.dispose();
+    _shuffleController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: durationMs),
+    );
+    setState(() {
+      _wheelValues = List<int>.from(_wheelValues)..shuffle(random);
+      _isShuffleAnimating = true;
+      _shuffleRotationAnimation = Tween<double>(
+        begin: _rotationAngle,
+        end: newEndAngle,
+      ).animate(CurvedAnimation(
+        parent: _shuffleController!,
+        curve: Curves.decelerate,
+      ));
+    });
+    _shuffleController!.reset();
+    _shuffleController!.forward().then((_) {
+      if (mounted) {
+        setState(() {
+          _rotationAngle = targetAngle; // Land exactly on target segment
+          _isShuffleAnimating = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Wheel shuffled!'),
+            backgroundColor: Color(0xFF2D7A4F),
+            duration: Duration(milliseconds: 800),
+          ),
+        );
+      }
+    });
+  }
+
   void _spinWheel() {
     if (_isSpinning || _selectedGroupId == null || _members.isEmpty) {
       if (_selectedGroupId == null) {
@@ -567,6 +624,15 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
     final totalRotation = (fullRotations * 2 * math.pi) + additionalAngle;
     final newEndAngle = _rotationAngle + totalRotation;
 
+    // Duration proportional to rotation so angular speed is always consistent
+    final rotations = totalRotation / (2 * math.pi);
+    final durationMs = (rotations * 1200).round().clamp(6000, 14000); // ~1.2 sec per rotation, 6-14 sec total
+    _controller?.dispose();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: durationMs),
+    );
+
     // Update the rotation animation
     setState(() {
       _isSpinning = true;
@@ -574,14 +640,14 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
         begin: _rotationAngle,
         end: newEndAngle,
       ).animate(CurvedAnimation(
-        parent: _controller,
+        parent: _controller!,
         curve: Curves.decelerate,
       ));
     });
 
     // Reset and start animation
-    _controller.reset();
-    _controller.forward().then((_) {
+    _controller!.reset();
+    _controller!.forward().then((_) {
       final finalAngle = newEndAngle % (2 * math.pi);
       if (mounted) {
         setState(() {
@@ -883,10 +949,23 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                           children: [
                             // Wheel
                             AnimatedBuilder(
-                              animation: _rotationAnimation,
+                              animation: () {
+                                if (_isShuffleAnimating && _shuffleRotationAnimation != null) {
+                                  return _shuffleRotationAnimation!;
+                                }
+                                if (_isSpinning && _rotationAnimation != null) {
+                                  return _rotationAnimation!;
+                                }
+                                return AlwaysStoppedAnimation<double>(_rotationAngle);
+                              }(),
                               builder: (context, child) {
+                                final angle = _isShuffleAnimating && _shuffleRotationAnimation != null
+                                    ? _shuffleRotationAnimation!.value
+                                    : _isSpinning && _rotationAnimation != null
+                                        ? _rotationAnimation!.value
+                                        : _rotationAngle;
                                 return Transform.rotate(
-                                  angle: _rotationAnimation.value,
+                                  angle: angle,
                                   child: CustomPaint(
                                     size: Size(wheelSize, wheelSize),
                                     painter: WheelPainter(
@@ -907,25 +986,30 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                                 painter: PointerPainter(),
                               ),
                             ),
-                            // Center decoration (no longer a button)
-                            Container(
-                              width: centerSize,
-                              height: centerSize,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF374151),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: math.max(6.0, centerSize * 0.12),
-                                    offset: Offset(0, math.max(1.0, centerSize * 0.03)),
-                                  ),
-                                ],
-                              ),
-                              child: Icon(
-                                Icons.star,
-                                color: Colors.white,
-                                size: math.max(20.0, centerSize * 0.45),
+                            // Center star - tap to shuffle wheel
+                            GestureDetector(
+                              onTap: _isSpinning || _isShuffleAnimating || _members.isEmpty
+                                  ? null
+                                  : _shuffleWheel,
+                              child: Container(
+                                width: centerSize,
+                                height: centerSize,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF374151),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: math.max(6.0, centerSize * 0.12),
+                                      offset: Offset(0, math.max(1.0, centerSize * 0.03)),
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.star,
+                                  color: Colors.white,
+                                  size: math.max(20.0, centerSize * 0.45),
+                                ),
                               ),
                             ),
                           ],
@@ -937,7 +1021,7 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
                         width: spinButtonWidth,
                         height: spinButtonHeight,
                         child: ElevatedButton(
-                          onPressed: _isSpinning || _selectedGroupId == null || _members.isEmpty || _hasSpun
+                          onPressed: _isSpinning || _isShuffleAnimating || _selectedGroupId == null || _members.isEmpty || _hasSpun
                               ? null
                               : _spinWheel,
                           style: ElevatedButton.styleFrom(
