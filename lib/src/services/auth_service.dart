@@ -1,12 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'api_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    // Web client ID from Firebase project colleezy-e1017 (client_type 3)
-    serverClientId: '678805143558-48n4ilpg1levi2d58ae5oepv4efa1htk.apps.googleusercontent.com',
+    // Web client ID (OAuth client_type 3) from Firebase → Project settings → Your apps. Prefer .env GOOGLE_WEB_CLIENT_ID.
+    serverClientId: dotenv.env['GOOGLE_WEB_CLIENT_ID'] ??
+        '678805143558-48n4ilpg1levi2d58ae5oepv4efa1htk.apps.googleusercontent.com',
   );
   final ApiService _apiService = ApiService();
 
@@ -69,6 +71,10 @@ class AuthService {
       {required Function(String verificationId) onCodeSent,
       required Function(String error) onError}) async {
     try {
+      // Bypass Play Integrity (avoids project mismatch 17028 when not using Play Console).
+      // Uses reCAPTCHA flow instead. Android only; no-op on other platforms.
+      await _auth.setSettings(forceRecaptchaFlow: true);
+
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) {
